@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Pico Park Web</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        #ui { position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 8px; }
+        input, button { margin: 5px 0; padding: 5px; }
+    </style>
+    <!-- 3D 렌더링(Three.js) 및 P2P 멀티플레이(PeerJS) 라이브러리 불러오기 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div id="ui">
+        <h3>3D 피코파크 웹 멀티</h3>
+        <div>내 ID: <span id="my-id">생성 중...</span></div>
+        <input type="text" id="other-id" placeholder="친구 ID 입력">
+        <button onclick="connectToPeer()">친구 방에 접속</button>
+        <div style="font-size: 12px; color: #ccc; margin-top: 5px;">조작: WASD / 방향키</div>
+    </div>
+
+    <script>
+        // 1. Three.js 3D 씬(Scene) 기본 설정
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb); // 하늘색 배경
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 조명 추가
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(5, 10, 7.5);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
+
+        // 바닥 생성
+        const floorGeo = new THREE.BoxGeometry(20, 1, 20);
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.position.y = -0.5;
+        scene.add(floor);
+
+        // 2. 플레이어 캐릭터 생성 (내 캐릭터 & 상대 캐릭터)
+        const playerGeo = new THREE.BoxGeometry(1, 1, 1);
+        
+        // 내 캐릭터 (초록색)
+        const myMat = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+        const myPlayer = new THREE.Mesh(playerGeo, myMat);
+        myPlayer.position.set(-2, 0.5, 0);
+        scene.add(myPlayer);
+
+        // 상대 캐릭터 (빨간색)
+        const otherMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+        const otherPlayer = new THREE.Mesh(playerGeo, otherMat);
+        otherPlayer.position.set(2, 0.5, 0);
+        scene.add(otherPlayer);
+
+        // 3. 키보드 입력 처리
+        const keys = {};
+        window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+        // 4. PeerJS 멀티플레이 동기화 설정
+        const peer = new Peer();
+        let conn = null;
+
+        peer.on('open', (id) => {
+            document.getElementById('my-id').innerText = id;
+        });
+
+        // 상대방이 내 ID로 접속했을 때
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+        });
+
+        // 내가 상대방 ID로 접속할 때
+        function connectToPeer() {
+            const otherId = document.getElementById('other-id').value;
+            conn = peer.connect(otherId);
+            setupConnection();
+        }
+
+        function setupConnection() {
+            conn.on('data', (data) => {
+                // 상대방의 위치 데이터를 받아서 상대 플레이어 위치 업데이트
+                otherPlayer.position.set(data.x, data.y, data.z);
+            });
+        }
+
+        // 5. 프레임 업데이트 (게임 루프)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 이동 로직
+            const speed = 0.1;
+            let moved = false;
+
+            if (keys['w'] || keys['arrowup']) { myPlayer.position.z -= speed; moved = true; }
+            if (keys['s'] || keys['arrowdown']) { myPlayer.position.z += speed; moved = true; }
+            if (keys['a'] || keys['arrowleft']) { myPlayer.position.x -= speed; moved = true; }
+            if (keys['d'] || keys['arrowright']) { myPlayer.position.x += speed; moved = true; }
+
+            // 내 위치가 바뀌었고 네트워크 연결이 되어있다면 데이터 전송
+            if (moved && conn && conn.open) {
+                conn.send({
+                    x: myPlayer.position.x,
+                    y: myPlayer.position.y,
+                    z: myPlayer.position.z
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // 창 크기 변경 시 카메라 비율 조정
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
