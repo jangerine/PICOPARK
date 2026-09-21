@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pico Park - Stage 1-1 Key Carrier Edition</title>
+    <title>3D Pico Park - 30 Stages Edition</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { overflow: hidden; font-family: 'Pretendard', -apple-system, sans-serif; background-color: #0b0c10; color: #fff; user-select: none; }
@@ -17,47 +17,45 @@
         }
         #ui-panel h2 { font-size: 18px; margin-bottom: 12px; color: #38bdf8; }
         
-        .room-box { background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
-        .room-code { font-size: 24px; font-weight: bold; color: #38bdf8; letter-spacing: 4px; font-family: monospace; margin: 4px 0; }
+        .room-box { background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
+        .room-code { font-size: 22px; font-weight: bold; color: #38bdf8; letter-spacing: 4px; font-family: monospace; }
         
-        input[type="text"] {
-            width: 100%; padding: 10px; margin: 6px 0; border-radius: 6px;
-            border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 14px; outline: none; text-align: center;
+        input, select {
+            width: 100%; padding: 8px; margin: 4px 0; border-radius: 6px;
+            border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 13px; text-align: center; outline: none;
         }
         
         button {
-            width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: none;
+            width: 100%; padding: 9px; margin-top: 4px; border-radius: 6px; border: none;
             background: #0284c7; color: white; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;
         }
         button:hover { background: #0369a1; }
         button.host-btn { background: #10b981; }
-        button.host-btn:hover { background: #059669; }
         
-        #status-text { font-size: 12px; margin-top: 8px; color: #fbbf24; text-align: center; }
+        #status-text { font-size: 12px; margin-top: 6px; color: #fbbf24; text-align: center; }
         
         #stage-badge {
             position: absolute; top: 15px; right: 15px; z-index: 10;
             background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
             border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px;
-            padding: 12px 20px; font-size: 16px; font-weight: 700; color: #38bdf8;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            padding: 10px 18px; font-size: 15px; font-weight: 700; color: #38bdf8;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: right;
         }
 
         #controls-guide {
             position: absolute; bottom: 15px; left: 15px; z-index: 10;
             background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(6px);
             border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
-            padding: 12px 16px; font-size: 12px; color: #cbd5e1; line-height: 1.6;
+            padding: 10px 14px; font-size: 12px; color: #cbd5e1; line-height: 1.5;
         }
         
-        /* Mobile Controls */
         #touch-controls {
             position: absolute; bottom: 20px; right: 20px; z-index: 10;
-            display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 5px;
+            display: grid; grid-template-columns: repeat(3, 45px); grid-template-rows: repeat(3, 45px); gap: 5px;
         }
         .touch-btn {
             background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; color: white; font-size: 16px; display: flex; align-items: center; justify-content: center;
         }
         #btn-up { grid-column: 2; grid-row: 1; }
         #btn-left { grid-column: 1; grid-row: 2; }
@@ -72,31 +70,39 @@
     <div id="canvas-container"></div>
 
     <div id="ui-panel">
-        <h2>🔑 Pico Park STAGE 1-1</h2>
+        <h2>🎮 Pico Park 30 Stages</h2>
         
         <div class="room-box">
-            <button class="host-btn" onclick="createRoom()">🏠 방 만들기</button>
-            <div id="host-code-display" style="display:none; margin-top:8px;">
-                <span style="font-size:12px; color:#94a3b8;">생성된 방 코드</span>
+            <button class="host-btn" onclick="createRoom()">🏠 멀티 방 만들기</button>
+            <div id="host-code-display" style="display:none; margin-top:6px;">
+                <span style="font-size:11px; color:#94a3b8;">생성된 코드</span>
                 <div id="room-code-num" class="room-code">----</div>
             </div>
         </div>
 
-        <div style="margin-top: 10px;">
-            <input type="text" id="join-code" placeholder="4자리 방 코드" maxlength="4">
-            <button onclick="joinRoom()">입장하기</button>
+        <div>
+            <input type="text" id="join-code" placeholder="4자리 코드" maxlength="4">
+            <button onclick="joinRoom()">접속하기</button>
         </div>
 
-        <div id="status-text">상태: 대기 중</div>
+        <div style="margin-top: 8px;">
+            <label style="font-size: 11px; color: #94a3b8;">스테이지 건너뛰기</label>
+            <select id="stage-select" onchange="skipStage(this.value)">
+                <!-- JS에서 30개 자동 생성 -->
+            </select>
+        </div>
+
+        <div id="status-text">상태: 싱글/멀티 대기 중</div>
     </div>
 
-    <div id="stage-badge">STAGE 1-1 : KEY CARRIER</div>
+    <div id="stage-badge">
+        <div id="stage-num">STAGE 1 / 30</div>
+        <div id="stage-name" style="font-size: 12px; color: #94a3b8; font-weight: normal;">Key Carrier 1</div>
+    </div>
 
     <div id="controls-guide">
-        🎯 <b>원작 미션:</b><br>
-        1. 공중에 떠 있는 <b>노란 열쇠</b>를 획득하세요.<br>
-        2. 열쇠 구멍이 높이 있으므로 <b>친구 위에 올라타서(스태킹)</b> 열쇠를 꽂으세요.<br>
-        3. 닫힌 문이 열리면 둘 다 오른쪽 <b>Door로 골인</b>하세요!
+        💡 <b>조작:</b> A/D (이동), Space / W (점프)<br>
+        협동하여 열쇠를 꽂거나 스위치를 눌러 오른쪽 관문으로 함께 들어가세요!
     </div>
 
     <div id="touch-controls">
@@ -106,7 +112,61 @@
     </div>
 
     <script>
-        // --- 1. Three.js Setup ---
+        // --- 1. 30 Stages Database Definition ---
+        const STAGES = [];
+        const STAGE_TYPES = ["KEY", "SWITCH", "BLOCK", "SPIKE"];
+
+        // 30개의 다양한 기믹을 가진 스테이지 데이터 자동 구성
+        for (let i = 1; i <= 30; i++) {
+            const type = STAGE_TYPES[(i - 1) % 4];
+            let name = "";
+            let data = {
+                type: type,
+                p1Spawn: { x: -11, y: 0.45 },
+                p2Spawn: { x: -9.5, y: 0.45 },
+                doorX: 9,
+                goalX: 12,
+                keyPos: null,
+                lockPos: null,
+                switches: [],
+                spikes: [],
+                blocks: []
+            };
+
+            if (type === "KEY") {
+                name = `Stage ${i}: Key Stacking ${Math.ceil(i/4)}`;
+                data.keyPos = { x: -6 + (i % 3), y: 2.5 };
+                data.lockPos = { x: 3 + (i % 4), y: 4.5 + (i % 2) * 0.8 }; // 높은 곳에 있어 스태킹 필수
+            } else if (type === "SWITCH") {
+                name = `Stage ${i}: Dual Switch ${Math.ceil(i/4)}`;
+                data.switches = [
+                    { x: -7 + (i % 2), y: 0.08 },
+                    { x: 5 - (i % 3), y: 0.08 }
+                ];
+            } else if (type === "BLOCK") {
+                name = `Stage ${i}: Block Push ${Math.ceil(i/4)}`;
+                data.blocks = [{ x: -2, y: 0.75, w: 1.5, h: 1.5 }]; // 길을 막고 있는 밀 수 있는 상자
+            } else if (type === "SPIKE") {
+                name = `Stage ${i}: Spike Jump ${Math.ceil(i/4)}`;
+                data.spikes = [
+                    { x: -3, y: 0.2 }, { x: -1.5, y: 0.2 }, { x: 0, y: 0.2 }
+                ];
+            }
+            STAGES.push({ name, ...data });
+        }
+
+        let currentStageIdx = 0;
+
+        // UI에 스테이지 선택 옵션 채우기
+        const stageSelect = document.getElementById('stage-select');
+        STAGES.forEach((s, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.innerText = `${idx + 1}. ${s.name}`;
+            stageSelect.appendChild(opt);
+        });
+
+        // --- 2. Three.js Engine Setup ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0f172a);
@@ -127,67 +187,122 @@
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // --- 2. Stage 1-1 Map Objects ---
-        const floorGeo = new THREE.BoxGeometry(28, 2, 2);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
-        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-        floorMesh.position.set(0, -1, 0);
-        floorMesh.receiveShadow = true;
-        scene.add(floorMesh);
-
-        // Key Object
-        let hasKey = false;
-        let keyCarrier = null;
-        const keyGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
-        const keyMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 });
-        const keyMesh = new THREE.Mesh(keyGeo, keyMat);
-        keyMesh.position.set(-8, 2.5, 0);
-        scene.add(keyMesh);
-
-        // Key Hole (Lock Platform)
-        const lockGeo = new THREE.BoxGeometry(1.2, 1.2, 0.4);
-        const lockMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
-        const lockMesh = new THREE.Mesh(lockGeo, lockMat);
-        lockMesh.position.set(4, 5.0, 0);
-        scene.add(lockMesh);
-
-        // Door Barrier
-        let isDoorUnlocked = false;
-        const doorGeo = new THREE.BoxGeometry(0.8, 5, 0.8);
-        const doorMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
-        const doorMesh = new THREE.Mesh(doorGeo, doorMat);
-        doorMesh.position.set(9, 2.5, 0);
-        scene.add(doorMesh);
-
-        // Goal Door Frame & Area
-        const goalGeo = new THREE.BoxGeometry(2.5, 3.5, 0.2);
-        const goalMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 });
-        const goalMesh = new THREE.Mesh(goalGeo, goalMat);
-        goalMesh.position.set(12, 1.75, 0);
-        scene.add(goalMesh);
+        // Map Object Containers
+        let floorMesh, doorMesh, goalMesh, keyMesh, lockMesh;
+        let switchMeshes = [], spikeMeshes = [], blockMeshes = [];
 
         // Players
         const PLAYER_SIZE = 0.9;
         const playerGeo = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
         
         const p1Mesh = new THREE.Mesh(playerGeo, new THREE.MeshStandardMaterial({ color: 0x10b981 }));
-        p1Mesh.position.set(-11, 0.45, 0);
         p1Mesh.castShadow = true;
         scene.add(p1Mesh);
 
         const p2Mesh = new THREE.Mesh(playerGeo, new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
-        p2Mesh.position.set(-9.5, 0.45, 0);
         p2Mesh.castShadow = true;
         scene.add(p2Mesh);
 
-        // Physics State Variables
+        // State Variables
         let vy = 0;
         const gravity = -0.015;
         const jumpPower = 0.32;
         let isGrounded = false;
+        let hasKey = false;
+        let keyCarrier = null;
+        let isDoorUnlocked = false;
         let isClearing = false;
 
-        // Controls
+        // --- 3. Stage Builder ---
+        function buildStage(idx) {
+            currentStageIdx = idx;
+            const data = STAGES[idx];
+
+            document.getElementById('stage-num').innerText = `STAGE ${idx + 1} / 30`;
+            document.getElementById('stage-name').innerText = data.name;
+            document.getElementById('stage-select').value = idx;
+
+            // Clear Old Meshes
+            if (floorMesh) scene.remove(floorMesh);
+            if (doorMesh) scene.remove(doorMesh);
+            if (goalMesh) scene.remove(goalMesh);
+            if (keyMesh) scene.remove(keyMesh);
+            if (lockMesh) scene.remove(lockMesh);
+            switchMeshes.forEach(m => scene.remove(m)); switchMeshes = [];
+            spikeMeshes.forEach(m => scene.remove(m)); spikeMeshes = [];
+            blockMeshes.forEach(m => scene.remove(m)); blockMeshes = [];
+
+            // Reset States
+            hasKey = false;
+            keyCarrier = null;
+            isDoorUnlocked = false;
+
+            // 1. Floor
+            const floorGeo = new THREE.BoxGeometry(28, 2, 2);
+            floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+            floorMesh.position.set(0, -1, 0);
+            floorMesh.receiveShadow = true;
+            scene.add(floorMesh);
+
+            // 2. Door & Goal
+            const doorGeo = new THREE.BoxGeometry(0.8, 5, 0.8);
+            doorMesh = new THREE.Mesh(doorGeo, new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+            doorMesh.position.set(data.doorX, 2.5, 0);
+            scene.add(doorMesh);
+
+            const goalGeo = new THREE.BoxGeometry(2.5, 3.5, 0.2);
+            goalMesh = new THREE.Mesh(goalGeo, new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 }));
+            goalMesh.position.set(data.goalX, 1.75, 0);
+            scene.add(goalMesh);
+
+            // 3. Stage Specific Gimmicks
+            if (data.type === "KEY") {
+                const keyGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
+                keyMesh = new THREE.Mesh(keyGeo, new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8 }));
+                keyMesh.position.set(data.keyPos.x, data.keyPos.y, 0);
+                scene.add(keyMesh);
+
+                const lockGeo = new THREE.BoxGeometry(1.2, 1.2, 0.4);
+                lockMesh = new THREE.Mesh(lockGeo, new THREE.MeshStandardMaterial({ color: 0x78350f }));
+                lockMesh.position.set(data.lockPos.x, data.lockPos.y, 0);
+                scene.add(lockMesh);
+            } else if (data.type === "SWITCH") {
+                data.switches.forEach(sw => {
+                    const swMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.9), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+                    swMesh.position.set(sw.x, sw.y, 0);
+                    scene.add(swMesh);
+                    switchMeshes.push(swMesh);
+                });
+            } else if (data.type === "SPIKE") {
+                data.spikes.forEach(sp => {
+                    const spMesh = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6, 4), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+                    spMesh.position.set(sp.x, sp.y, 0);
+                    scene.add(spMesh);
+                    spikeMeshes.push(spMesh);
+                });
+            } else if (data.type === "BLOCK") {
+                data.blocks.forEach(b => {
+                    const bMesh = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, 0.9), new THREE.MeshStandardMaterial({ color: 0x8b5cf6 }));
+                    bMesh.position.set(b.x, b.y, 0);
+                    scene.add(bMesh);
+                    blockMeshes.push(bMesh);
+                });
+            }
+
+            // Spawn Players
+            p1Mesh.position.set(data.p1Spawn.x, data.p1Spawn.y, 0);
+            p2Mesh.position.set(data.p2Spawn.x, data.p2Spawn.y, 0);
+            vy = 0;
+        }
+
+        buildStage(0);
+
+        function skipStage(val) {
+            buildStage(parseInt(val));
+            if (conn && conn.open) conn.send({ changeStage: parseInt(val) });
+        }
+
+        // --- 4. Controls & Input ---
         const keys = {};
         window.addEventListener('keydown', e => {
             keys[e.key.toLowerCase()] = true;
@@ -210,9 +325,9 @@
         bindTouch('btn-left', 'left');
         bindTouch('btn-right', 'right');
 
-        // --- 3. Networking (PeerJS) ---
+        // --- 5. PeerJS Network ---
         let peer = null, conn = null;
-        const PREFIX = "pico-park-room-";
+        const PREFIX = "pico-park-30s-";
 
         function createRoom() {
             const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
@@ -222,7 +337,7 @@
             peer.on('open', () => {
                 document.getElementById('host-code-display').style.display = 'block';
                 document.getElementById('room-code-num').innerText = roomCode;
-                setStatus(`방 코드: ${roomCode} (친구 대기 중)`, "#fbbf24");
+                setStatus(`방 코드: ${roomCode} (대기 중)`, "#fbbf24");
             });
             peer.on('connection', connection => { conn = connection; initConnection(); });
         }
@@ -241,9 +356,12 @@
         }
 
         function initConnection() {
-            conn.on('open', () => setStatus("연결 완료! 게임 시작 🟢", "#10b981"));
+            conn.on('open', () => setStatus("연결 성공! 🟢", "#10b981"));
             conn.on('data', data => {
                 p2Mesh.position.set(data.x, data.y, 0);
+                if (data.changeStage !== undefined && data.changeStage !== currentStageIdx) {
+                    buildStage(data.changeStage);
+                }
                 if (data.hasKey !== undefined) hasKey = data.hasKey;
                 if (data.isUnlocked !== undefined) isDoorUnlocked = data.isUnlocked;
             });
@@ -254,12 +372,13 @@
             el.innerText = msg; el.style.color = color;
         }
 
-        // --- 4. Main Loop ---
+        // --- 6. Main Physics Loop ---
         function animate() {
             requestAnimationFrame(animate);
 
             const speed = 0.12;
             let moved = false;
+            const currentData = STAGES[currentStageIdx];
 
             // X Movement
             if (keys['a'] || keys['arrowleft'] || touchState.left) { p1Mesh.position.x -= speed; moved = true; }
@@ -267,11 +386,10 @@
 
             p1Mesh.position.x = Math.max(-13.5, Math.min(13.5, p1Mesh.position.x));
 
-            // Gravity & Vertical Physics
+            // Gravity & Stacking Logic
             vy += gravity;
             p1Mesh.position.y += vy;
 
-            // Stacking Engine
             const floorY = 0.45;
             let groundY = floorY;
 
@@ -297,26 +415,62 @@
                 moved = true;
             }
 
-            // Key Pick Up Check
-            if (!hasKey) {
-                if (p1Mesh.position.distanceTo(keyMesh.position) < 1.0) {
-                    hasKey = true;
-                    keyCarrier = 1;
-                } else if (p2Mesh.position.distanceTo(keyMesh.position) < 1.0) {
-                    hasKey = true;
-                    keyCarrier = 2;
-                }
-            } else {
-                if (keyCarrier === 1) keyMesh.position.set(p1Mesh.position.x, p1Mesh.position.y + 0.8, 0);
-                else keyMesh.position.set(p2Mesh.position.x, p2Mesh.position.y + 0.8, 0);
+            // --- Gimmicks Interaction ---
+            // 1. KEY TYPE
+            if (currentData.type === "KEY" && keyMesh && lockMesh) {
+                if (!hasKey) {
+                    if (p1Mesh.position.distanceTo(keyMesh.position) < 1.0) { hasKey = true; keyCarrier = 1; }
+                    else if (p2Mesh.position.distanceTo(keyMesh.position) < 1.0) { hasKey = true; keyCarrier = 2; }
+                } else {
+                    if (keyCarrier === 1) keyMesh.position.set(p1Mesh.position.x, p1Mesh.position.y + 0.8, 0);
+                    else keyMesh.position.set(p2Mesh.position.x, p2Mesh.position.y + 0.8, 0);
 
-                if (keyMesh.position.distanceTo(lockMesh.position) < 1.2) {
-                    isDoorUnlocked = true;
-                    scene.remove(keyMesh);
+                    if (keyMesh.position.distanceTo(lockMesh.position) < 1.2) {
+                        isDoorUnlocked = true;
+                        scene.remove(keyMesh);
+                    }
                 }
             }
 
-            // Door Opening Logic
+            // 2. SWITCH TYPE
+            if (currentData.type === "SWITCH") {
+                let activeCnt = 0;
+                switchMeshes.forEach(sw => {
+                    if (Math.abs(p1Mesh.position.x - sw.position.x) < 0.8 || Math.abs(p2Mesh.position.x - sw.position.x) < 0.8) {
+                        sw.material.color.setHex(0x10b981);
+                        activeCnt++;
+                    } else {
+                        sw.material.color.setHex(0xf59e0b);
+                    }
+                });
+                if (activeCnt >= switchMeshes.length && switchMeshes.length > 0) isDoorUnlocked = true;
+                else if (switchMeshes.length > 0) isDoorUnlocked = false;
+            }
+
+            // 3. BLOCK TYPE (Push Block)
+            if (currentData.type === "BLOCK") {
+                isDoorUnlocked = true; // 문은 열려있되 블록을 밀어야 통과 가능
+                blockMeshes.forEach(b => {
+                    if (Math.abs(p1Mesh.position.x - b.position.x) < 1.0 && Math.abs(p1Mesh.position.y - b.position.y) < 0.8) {
+                        if (p1Mesh.position.x < b.position.x) b.position.x += 0.05;
+                        else b.position.x -= 0.05;
+                    }
+                });
+            }
+
+            // 4. SPIKE TYPE (Respawn on hit)
+            if (currentData.type === "SPIKE") {
+                isDoorUnlocked = true;
+                spikeMeshes.forEach(sp => {
+                    if (p1Mesh.position.distanceTo(sp.position) < 0.7) {
+                        // 리스폰
+                        p1Mesh.position.set(currentData.p1Spawn.x, currentData.p1Spawn.y, 0);
+                        vy = 0;
+                    }
+                });
+            }
+
+            // Door Barrier
             if (isDoorUnlocked) {
                 if (doorMesh.position.y < 5.5) doorMesh.position.y += 0.08;
             } else {
@@ -325,35 +479,32 @@
                 }
             }
 
-            // 🎯 [개선된 골인 판정] 
-            // 파란색 문 영역(X: 10.75 ~ 13.25)에 플레이어 2명이 모두 들어왔는지 사각형 영역으로 체크
-            const inGoalP1 = (p1Mesh.position.x >= 10.5 && p1Mesh.position.x <= 13.5);
-            const inGoalP2 = (p2Mesh.position.x >= 10.5 && p2Mesh.position.x <= 13.5);
+            // Goal Clearance
+            const inGoalP1 = (p1Mesh.position.x >= currentData.goalX - 1.2 && p1Mesh.position.x <= currentData.goalX + 1.2);
+            const inGoalP2 = (p2Mesh.position.x >= currentData.goalX - 1.2 && p2Mesh.position.x <= currentData.goalX + 1.2);
 
             if (inGoalP1 && inGoalP2 && !isClearing) {
-                isClearing = true; // 중복 실행 방지
+                isClearing = true;
                 setTimeout(() => {
-                    alert("🎉 STAGE 1-1 Key Carrier 클리어!");
-                    
-                    // Reset Game State
-                    p1Mesh.position.set(-11, 0.45, 0);
-                    p2Mesh.position.set(-9.5, 0.45, 0);
-                    hasKey = false;
-                    isDoorUnlocked = false;
-                    doorMesh.position.set(9, 2.5, 0);
-                    scene.add(keyMesh);
-                    keyMesh.position.set(-8, 2.5, 0);
+                    if (currentStageIdx < STAGES.length - 1) {
+                        alert(`🎉 STAGE ${currentStageIdx + 1} 클리어! 다음 스테이지로 이동합니다.`);
+                        buildStage(currentStageIdx + 1);
+                        if (conn && conn.open) conn.send({ changeStage: currentStageIdx });
+                    } else {
+                        alert("🏆 축하합니다! 30개의 모든 스테이지를 클리어하셨습니다!");
+                    }
                     isClearing = false;
                 }, 100);
             }
 
-            // Sync Multi
+            // Network Sync
             if ((moved || vy !== 0) && conn && conn.open) {
                 conn.send({
                     x: p1Mesh.position.x,
                     y: p1Mesh.position.y,
                     hasKey: hasKey,
-                    isUnlocked: isDoorUnlocked
+                    isUnlocked: isDoorUnlocked,
+                    changeStage: currentStageIdx
                 });
             }
 
