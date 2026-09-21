@@ -3,260 +3,350 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pico Park - Multi Maps</title>
+    <title>3D Pico Park - Multi Stage Game</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #000; }
-        #ui { position: absolute; top: 15px; left: 15px; z-index: 10; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 10px; min-width: 220px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        #stage-info { position: absolute; top: 15px; right: 15px; z-index: 10; background: rgba(0,0,0,0.8); color: #00ffcc; padding: 12px 20px; border-radius: 10px; font-size: 18px; font-weight: bold; }
-        input, button { width: 100%; margin: 6px 0; padding: 8px; border-radius: 5px; border: none; box-sizing: border-box; }
-        button { background: #008cba; color: white; font-weight: bold; cursor: pointer; }
-        button:hover { background: #005f73; }
-        #status { font-size: 13px; color: #ffcc00; margin-top: 5px; }
-        #controls-guide { position: absolute; bottom: 15px; left: 15px; color: white; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; font-size: 12px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { overflow: hidden; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0c10; color: #fff; user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* UI Overlay */
+        #ui-panel {
+            position: absolute; top: 15px; left: 15px; z-index: 10;
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px;
+            padding: 16px; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        #ui-panel h2 { font-size: 18px; margin-bottom: 10px; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+        .info-row { font-size: 13px; margin-bottom: 8px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
+        .info-row span.val { color: #f1f5f9; font-weight: 600; font-family: monospace; font-size: 14px; }
+        
+        input[type="text"] {
+            width: 100%; padding: 8px 12px; margin: 8px 0; border-radius: 6px;
+            border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 13px; outline: none;
+        }
+        input[type="text"]:focus { border-color: #38bdf8; }
+        
+        button {
+            width: 100%; padding: 10px; border-radius: 6px; border: none;
+            background: #0284c7; color: white; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;
+        }
+        button:hover { background: #0369a1; }
+        
+        #status-text { font-size: 12px; margin-top: 8px; color: #fbbf24; text-align: center; }
+        
+        #stage-badge {
+            position: absolute; top: 15px; right: 15px; z-index: 10;
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
+            border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px;
+            padding: 12px 20px; font-size: 18px; font-weight: 700; color: #38bdf8;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        #controls-guide {
+            position: absolute; bottom: 15px; left: 15px; z-index: 10;
+            background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
+            padding: 12px 16px; font-size: 12px; color: #cbd5e1; line-height: 1.6;
+        }
+        
+        /* Mobile Touch Controls */
+        #touch-controls {
+            position: absolute; bottom: 20px; right: 20px; z-index: 10;
+            display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 5px;
+        }
+        .touch-btn {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px; color: white; font-size: 18px; display: flex;
+            align-items: center; justify-content: center; backdrop-filter: blur(4px);
+        }
+        .touch-btn:active { background: rgba(56, 189, 248, 0.4); }
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+
+        @media (min-width: 768px) {
+            #touch-controls { display: none; }
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div id="ui">
-        <h3 style="margin-top:0;">3D 피코파크 웹</h3>
-        <div>내 ID: <span id="my-id" style="color:#00ffcc; font-weight:bold;">생성 중...</span></div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-panel">
+        <h2>🎮 3D Pico Park Multi</h2>
+        <div class="info-row">
+            <span>내 접속 ID:</span>
+            <span id="my-id" class="val">생성 중...</span>
+        </div>
         <input type="text" id="other-id" placeholder="친구 ID 입력">
-        <button onclick="connectToPeer()">친구 방 접속</button>
-        <div id="status">상태: 대기 중</div>
+        <button onclick="connectToPeer()">친구 방 접속하기</button>
+        <div id="status-text">상태: 서버 연결 대기 중</div>
     </div>
 
-    <div id="stage-info">STAGE <span id="stage-num">1</span> / 3</div>
+    <div id="stage-badge">STAGE <span id="stage-num">1</span> / 3</div>
 
     <div id="controls-guide">
-        🎮 조작법: WASD 또는 방향키 (이동)<br>
-        💡 맵의 노란색 스위치를 동시에 밟으면 빨간색 문이 열립니다!
+        💡 <b>플레이 방법:</b><br>
+        - WASD / 방향키 / 터치버튼으로 이동<br>
+        - 노란 스위치 2개를 두 명에서 동시에 밟으면 문이 열립니다.<br>
+        - 두 플레이어가 모두 파란 구체(골인)에 닿아야 다음 맵으로 넘어갑니다!
+    </div>
+
+    <div id="touch-controls">
+        <div class="touch-btn" id="btn-up">▲</div>
+        <div class="touch-btn" id="btn-left">◀</div>
+        <div class="touch-btn" id="btn-down">▼</div>
+        <div class="touch-btn" id="btn-right">▶</div>
     </div>
 
     <script>
-        // -------------------------------------------------------------
-        // 1. 스테이지(맵) 데이터 정의 (총 3개 맵)
-        // -------------------------------------------------------------
-        const MAP_DATA = [
-            // STAGE 1: 기본 평지 맵 (스위치 2개, 문 1개)
+        // --- 1. Stage Data Definition ---
+        const STAGES = [
             {
-                floor: { w: 20, h: 20 },
-                switches: [{ x: -4, z: -3 }, { x: 4, z: -3 }],
-                door: { x: 0, z: -6, w: 4, h: 4 },
-                goal: { x: 0, z: -9 },
-                spawnP1: { x: -2, z: 5 },
-                spawnP2: { x: 2, z: 5 }
+                name: "Stage 1: 기본 협동",
+                floor: { w: 18, h: 18 },
+                switches: [{ x: -4, z: -2 }, { x: 4, z: -2 }],
+                door: { x: 0, z: -5, w: 4, h: 3 },
+                goal: { x: 0, z: -8 },
+                spawns: [{ x: -2, z: 4 }, { x: 2, z: 4 }]
             },
-            // STAGE 2: 좁은 길목 & 양끝 스위치 맵
             {
-                floor: { w: 14, h: 24 },
-                switches: [{ x: -5, z: 0 }, { x: 5, z: 0 }],
-                door: { x: 0, z: -5, w: 3, h: 4 },
-                goal: { x: 0, z: -9 },
-                spawnP1: { x: -1.5, z: 8 },
-                spawnP2: { x: 1.5, z: 8 }
+                name: "Stage 2: 양끝 교차 기믹",
+                floor: { w: 14, h: 22 },
+                switches: [{ x: -5, z: 1 }, { x: 5, z: 1 }],
+                door: { x: 0, z: -4, w: 3, h: 3 },
+                goal: { x: 0, z: -8 },
+                spawns: [{ x: -1.5, z: 7 }, { x: 1.5, z: 7 }]
             },
-            // STAGE 3: 먼 거리 이동 맵 (장거리 협동)
             {
-                floor: { w: 26, h: 26 },
-                switches: [{ x: -8, z: -4 }, { x: 8, z: -4 }],
-                door: { x: 0, z: -8, w: 5, h: 4 },
-                goal: { x: 0, z: -11 },
-                spawnP1: { x: -3, z: 9 },
-                spawnP2: { x: 3, z: 9 }
+                name: "Stage 3: 장거리 레이스",
+                floor: { w: 22, h: 26 },
+                switches: [{ x: -7, z: -3 }, { x: 7, z: -3 }],
+                door: { x: 0, z: -7, w: 5, h: 3 },
+                goal: { x: 0, z: -10 },
+                spawns: [{ x: -2.5, z: 9 }, { x: 2.5, z: 9 }]
             }
         ];
 
-        let currentStage = 0;
+        let currentStageIdx = 0;
 
-        // -------------------------------------------------------------
-        // 2. Three.js 기본 그래픽 씬 설정
-        // -------------------------------------------------------------
+        // --- 2. Three.js Setup ---
+        const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a2e);
+        scene.background = new THREE.Color(0x0f172a);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 14, 16);
-        camera.lookAt(0, 0, -2);
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 15, 15);
+        camera.lookAt(0, 0, -1);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
 
-        // 조명
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
         scene.add(dirLight);
-        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
-        // 오브젝트 변수들
+        // Objects Containers
         let floorMesh, doorMesh, goalMesh;
         let switchMeshes = [];
-        let p1Mesh, p2Mesh;
 
-        // 플레이어 캐릭터 생성
-        const playerGeo = new THREE.BoxGeometry(1, 1, 1);
-        p1Mesh = new THREE.Mesh(playerGeo, new THREE.MeshLambertMaterial({ color: 0x00ff88 })); // 초록 (내 캐릭터 기본)
-        p2Mesh = new THREE.Mesh(playerGeo, new THREE.MeshLambertMaterial({ color: 0xff3366 })); // 분홍 (상대 캐릭터 기본)
+        // Players (P1: Green/Me, P2: Pink/Friend)
+        const playerGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+        
+        const p1Mat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3 });
+        const p1Mesh = new THREE.Mesh(playerGeo, p1Mat);
+        p1Mesh.castShadow = true;
         scene.add(p1Mesh);
+
+        const p2Mat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3 });
+        const p2Mesh = new THREE.Mesh(playerGeo, p2Mat);
+        p2Mesh.castShadow = true;
         scene.add(p2Mesh);
 
-        // -------------------------------------------------------------
-        // 3. 맵 로딩 로직
-        // -------------------------------------------------------------
-        function loadStage(stageIdx) {
-            const data = MAP_DATA[stageIdx];
-            document.getElementById('stage-num').innerText = stageIdx + 1;
+        // --- 3. Stage Builder ---
+        function buildStage(idx) {
+            const data = STAGES[idx];
+            document.getElementById('stage-num').innerText = idx + 1;
 
-            // 기존 맵 요소 제거
+            // Clear old objects
             if (floorMesh) scene.remove(floorMesh);
             if (doorMesh) scene.remove(doorMesh);
             if (goalMesh) scene.remove(goalMesh);
             switchMeshes.forEach(s => scene.remove(s));
             switchMeshes = [];
 
-            // 1) 바닥
-            const floorGeo = new THREE.BoxGeometry(data.floor.w, 0.5, data.floor.h);
-            floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({ color: 0x16213e }));
-            floorMesh.position.set(0, -0.25, 0);
+            // Floor
+            const floorGeo = new THREE.BoxGeometry(data.floor.w, 0.4, data.floor.h);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+            floorMesh = new THREE.Mesh(floorGeo, floorMat);
+            floorMesh.position.set(0, -0.2, 0);
+            floorMesh.receiveShadow = true;
             scene.add(floorMesh);
 
-            // 2) 스위치들 (노란색)
+            // Switches
             data.switches.forEach(sw => {
-                const swGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16);
-                const swMesh = new THREE.Mesh(swGeo, new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
-                swMesh.position.set(sw.x, 0.1, sw.z);
-                swMesh.isPressed = false;
+                const swGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.15, 24);
+                const swMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.2 });
+                const swMesh = new THREE.Mesh(swGeo, swMat);
+                swMesh.position.set(sw.x, 0.08, sw.z);
+                swMesh.receiveShadow = true;
                 scene.add(swMesh);
                 switchMeshes.push(swMesh);
             });
 
-            // 3) 문 (빨간색)
-            const doorGeo = new THREE.BoxGeometry(data.door.w, data.door.h, 0.5);
-            doorMesh = new THREE.Mesh(doorGeo, new THREE.MeshLambertMaterial({ color: 0xe94560 }));
+            // Door
+            const doorGeo = new THREE.BoxGeometry(data.door.w, data.door.h, 0.4);
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2 });
+            doorMesh = new THREE.Mesh(doorGeo, doorMat);
             doorMesh.position.set(data.door.x, data.door.h / 2, data.door.z);
+            doorMesh.castShadow = true;
             scene.add(doorMesh);
 
-            // 4) 골인 지점 (파란색 구체)
-            const goalGeo = new THREE.SphereGeometry(1, 16, 16);
-            goalMesh = new THREE.Mesh(goalGeo, new THREE.MeshLambertMaterial({ color: 0x00d2fc, wireframe: true }));
-            goalMesh.position.set(data.goal.x, 1, data.goal.z);
+            // Goal
+            const goalGeo = new THREE.SphereGeometry(0.8, 24, 24);
+            const goalMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, wireframe: true });
+            goalMesh = new THREE.Mesh(goalGeo, goalMat);
+            goalMesh.position.set(data.goal.x, 0.9, data.goal.z);
             scene.add(goalMesh);
 
-            // 플레이어 스폰 위치 세팅
-            p1Mesh.position.set(data.spawnP1.x, 0.5, data.spawnP1.z);
-            p2Mesh.position.set(data.spawnP2.x, 0.5, data.spawnP2.z);
+            // Spawns
+            p1Mesh.position.set(data.spawns[0].x, 0.45, data.spawns[0].z);
+            p2Mesh.position.set(data.spawns[1].x, 0.45, data.spawns[1].z);
         }
 
-        loadStage(0);
+        buildStage(0);
 
-        // -------------------------------------------------------------
-        // 4. 키보드 입력 및 네트워크 동기화
-        // -------------------------------------------------------------
+        // --- 4. Controls & Input ---
         const keys = {};
-        window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
-        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+        window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
+        // Touch Control bindings
+        const touchState = { up: false, down: false, left: false, right: false };
+        const bindTouch = (id, key) => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', e => { e.preventDefault(); touchState[key] = true; });
+            btn.addEventListener('touchend', e => { e.preventDefault(); touchState[key] = false; });
+            btn.addEventListener('mousedown', e => { touchState[key] = true; });
+            btn.addEventListener('mouseup', e => { touchState[key] = false; });
+        };
+        bindTouch('btn-up', 'up');
+        bindTouch('btn-down', 'down');
+        bindTouch('btn-left', 'left');
+        bindTouch('btn-right', 'right');
+
+        // --- 5. PeerJS Networking ---
         const peer = new Peer();
         let conn = null;
 
-        peer.on('open', (id) => {
+        peer.on('open', id => {
             document.getElementById('my-id').innerText = id;
         });
 
-        peer.on('connection', (connection) => {
+        peer.on('connection', connection => {
             conn = connection;
-            setupConnection();
+            initConnection();
         });
 
         function connectToPeer() {
-            const otherId = document.getElementById('other-id').value;
+            const otherId = document.getElementById('other-id').value.trim();
+            if(!otherId) return alert("상대방 ID를 입력하세요.");
             conn = peer.connect(otherId);
-            setupConnection();
+            initConnection();
         }
 
-        function setupConnection() {
-            document.getElementById('status').innerText = '상태: 연결 성공!';
-            document.getElementById('status').style.color = '#00ff88';
+        function initConnection() {
+            const statusEl = document.getElementById('status-text');
+            statusEl.innerText = "상태: 멀티플레이 연결 성공! 🟢";
+            statusEl.style.color = "#10b981";
 
-            conn.on('data', (data) => {
-                // 상대방 위치 업데이트
+            conn.on('data', data => {
+                // Update friend's position
                 p2Mesh.position.set(data.x, data.y, data.z);
 
-                // 상대방이 맵 이동 신호를 보낸 경우
-                if (data.stage !== undefined && data.stage !== currentStage) {
-                    currentStage = data.stage;
-                    loadStage(currentStage);
+                // Stage Sync
+                if (data.stage !== undefined && data.stage !== currentStageIdx) {
+                    currentStageIdx = data.stage;
+                    buildStage(currentStageIdx);
                 }
             });
         }
 
-        // -------------------------------------------------------------
-        // 5. 메인 게임 루프 (상호작용 및 물리 체크)
-        // -------------------------------------------------------------
+        // --- 6. Main Loop & Game Logic ---
         function animate() {
             requestAnimationFrame(animate);
 
-            // 1) 내 캐릭터 이동
+            // Movement
             const speed = 0.12;
             let moved = false;
 
-            if (keys['w'] || keys['arrowup']) { p1Mesh.position.z -= speed; moved = true; }
-            if (keys['s'] || keys['arrowdown']) { p1Mesh.position.z += speed; moved = true; }
-            if (keys['a'] || keys['arrowleft']) { p1Mesh.position.x -= speed; moved = true; }
-            if (keys['d'] || keys['arrowright']) { p1Mesh.position.x += speed; moved = true; }
+            if (keys['w'] || keys['arrowup'] || touchState.up) { p1Mesh.position.z -= speed; moved = true; }
+            if (keys['s'] || keys['arrowdown'] || touchState.down) { p1Mesh.position.z += speed; moved = true; }
+            if (keys['a'] || keys['arrowleft'] || touchState.left) { p1Mesh.position.x -= speed; moved = true; }
+            if (keys['d'] || keys['arrowright'] || touchState.right) { p1Mesh.position.x += speed; moved = true; }
 
-            // 2) 스위치 감지 로직 (모든 스위치가 누군가에 의해 눌려야 함)
-            let pressedCount = 0;
+            // Switch Check
+            let activeSwitches = 0;
             switchMeshes.forEach(sw => {
-                const distP1 = p1Mesh.position.distanceTo(sw.position);
-                const distP2 = p2Mesh.position.distanceTo(sw.position);
+                const dist1 = p1Mesh.position.distanceTo(sw.position);
+                const dist2 = p2Mesh.position.distanceTo(sw.position);
 
-                if (distP1 < 1.0 || distP2 < 1.0) {
-                    sw.material.color.setHex(0x00ff00); // 밟으면 초록색
-                    pressedCount++;
+                if (dist1 < 0.9 || dist2 < 0.9) {
+                    sw.material.color.setHex(0x10b981); // Active Green
+                    activeSwitches++;
                 } else {
-                    sw.material.color.setHex(0xffcc00); // 떼면 노란색
+                    sw.material.color.setHex(0xf59e0b); // Inactive Yellow
                 }
             });
 
-            // 모든 스위치가 눌리면 문이 올라감 (열림)
-            if (pressedCount >= switchMeshes.length && switchMeshes.length > 0) {
-                if (doorMesh.position.y < 5) doorMesh.position.y += 0.05;
+            // Door Logic
+            const doorData = STAGES[currentStageIdx].door;
+            if (activeSwitches >= switchMeshes.length && switchMeshes.length > 0) {
+                if (doorMesh.position.y < 4.5) doorMesh.position.y += 0.08;
             } else {
-                if (doorMesh.position.y > MAP_DATA[currentStage].door.h / 2) doorMesh.position.y -= 0.05;
+                if (doorMesh.position.y > doorData.h / 2) doorMesh.position.y -= 0.08;
             }
 
-            // 3) 문에 막히는 간단한 충돌 처리
-            if (doorMesh.position.y < 3) {
-                const data = MAP_DATA[currentStage];
-                if (Math.abs(p1Mesh.position.z - data.door.z) < 0.5 &&
-                    Math.abs(p1Mesh.position.x - data.door.x) < data.door.w / 2) {
-                    p1Mesh.position.z += 0.2; // 튕겨냄
+            // Door Collision
+            if (doorMesh.position.y < 2.5) {
+                if (Math.abs(p1Mesh.position.z - doorData.z) < 0.5 &&
+                    Math.abs(p1Mesh.position.x - doorData.x) < doorData.w / 2) {
+                    p1Mesh.position.z += 0.15; // Push back
                 }
             }
 
-            // 4) 골인 지점 도달 체크 (두 플레이어 모두 도달해야 다음 스테이지)
-            const distGoalP1 = p1Mesh.position.distanceTo(goalMesh.position);
-            const distGoalP2 = p2Mesh.position.distanceTo(goalMesh.position);
+            // Goal Logic (Both must reach goal)
+            const d1 = p1Mesh.position.distanceTo(goalMesh.position);
+            const d2 = p2Mesh.position.distanceTo(goalMesh.position);
 
-            if (distGoalP1 < 1.5 && distGoalP2 < 1.5) {
-                if (currentStage < MAP_DATA.length - 1) {
-                    currentStage++;
-                    loadStage(currentStage);
-                    alert(`축하합니다! Stage ${currentStage} 클리어! 다음 맵으로 이동합니다.`);
+            if (d1 < 1.2 && d2 < 1.2) {
+                if (currentStageIdx < STAGES.length - 1) {
+                    currentStageIdx++;
+                    buildStage(currentStageIdx);
+                    alert(`🎉 STAGE ${currentStageIdx} 클리어! 다음 맵으로 이동합니다.`);
                 } else {
-                    alert('🎉 모든 스테이지를 클리어했습니다! 게임을 종료합니다.');
+                    alert("🏆 축하합니다! 모든 스테이지를 클리어했습니다!");
                 }
             }
 
-            // 5) 내 위치 및 스테이지 데이터 전송
+            // Network Send
             if (moved && conn && conn.open) {
                 conn.send({
                     x: p1Mesh.position.x,
                     y: p1Mesh.position.y,
                     z: p1Mesh.position.z,
-                    stage: currentStage
+                    stage: currentStageIdx
                 });
             }
 
@@ -265,6 +355,7 @@
 
         animate();
 
+        // Responsive Resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
