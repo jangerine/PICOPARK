@@ -3,72 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pico Park Web</title>
+    <title>3D Pico Park - Multi Maps</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        #ui { position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 8px; }
-        input, button { margin: 5px 0; padding: 5px; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #000; }
+        #ui { position: absolute; top: 15px; left: 15px; z-index: 10; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 10px; min-width: 220px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        #stage-info { position: absolute; top: 15px; right: 15px; z-index: 10; background: rgba(0,0,0,0.8); color: #00ffcc; padding: 12px 20px; border-radius: 10px; font-size: 18px; font-weight: bold; }
+        input, button { width: 100%; margin: 6px 0; padding: 8px; border-radius: 5px; border: none; box-sizing: border-box; }
+        button { background: #008cba; color: white; font-weight: bold; cursor: pointer; }
+        button:hover { background: #005f73; }
+        #status { font-size: 13px; color: #ffcc00; margin-top: 5px; }
+        #controls-guide { position: absolute; bottom: 15px; left: 15px; color: white; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; font-size: 12px; }
     </style>
-    <!-- 3D 렌더링(Three.js) 및 P2P 멀티플레이(PeerJS) 라이브러리 불러오기 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div id="ui">
-        <h3>3D 피코파크 웹 멀티</h3>
-        <div>내 ID: <span id="my-id">생성 중...</span></div>
+        <h3 style="margin-top:0;">3D 피코파크 웹</h3>
+        <div>내 ID: <span id="my-id" style="color:#00ffcc; font-weight:bold;">생성 중...</span></div>
         <input type="text" id="other-id" placeholder="친구 ID 입력">
-        <button onclick="connectToPeer()">친구 방에 접속</button>
-        <div style="font-size: 12px; color: #ccc; margin-top: 5px;">조작: WASD / 방향키</div>
+        <button onclick="connectToPeer()">친구 방 접속</button>
+        <div id="status">상태: 대기 중</div>
+    </div>
+
+    <div id="stage-info">STAGE <span id="stage-num">1</span> / 3</div>
+
+    <div id="controls-guide">
+        🎮 조작법: WASD 또는 방향키 (이동)<br>
+        💡 맵의 노란색 스위치를 동시에 밟으면 빨간색 문이 열립니다!
     </div>
 
     <script>
-        // 1. Three.js 3D 씬(Scene) 기본 설정
+        // -------------------------------------------------------------
+        // 1. 스테이지(맵) 데이터 정의 (총 3개 맵)
+        // -------------------------------------------------------------
+        const MAP_DATA = [
+            // STAGE 1: 기본 평지 맵 (스위치 2개, 문 1개)
+            {
+                floor: { w: 20, h: 20 },
+                switches: [{ x: -4, z: -3 }, { x: 4, z: -3 }],
+                door: { x: 0, z: -6, w: 4, h: 4 },
+                goal: { x: 0, z: -9 },
+                spawnP1: { x: -2, z: 5 },
+                spawnP2: { x: 2, z: 5 }
+            },
+            // STAGE 2: 좁은 길목 & 양끝 스위치 맵
+            {
+                floor: { w: 14, h: 24 },
+                switches: [{ x: -5, z: 0 }, { x: 5, z: 0 }],
+                door: { x: 0, z: -5, w: 3, h: 4 },
+                goal: { x: 0, z: -9 },
+                spawnP1: { x: -1.5, z: 8 },
+                spawnP2: { x: 1.5, z: 8 }
+            },
+            // STAGE 3: 먼 거리 이동 맵 (장거리 협동)
+            {
+                floor: { w: 26, h: 26 },
+                switches: [{ x: -8, z: -4 }, { x: 8, z: -4 }],
+                door: { x: 0, z: -8, w: 5, h: 4 },
+                goal: { x: 0, z: -11 },
+                spawnP1: { x: -3, z: 9 },
+                spawnP2: { x: 3, z: 9 }
+            }
+        ];
+
+        let currentStage = 0;
+
+        // -------------------------------------------------------------
+        // 2. Three.js 기본 그래픽 씬 설정
+        // -------------------------------------------------------------
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // 하늘색 배경
+        scene.background = new THREE.Color(0x1a1a2e);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 5, 10);
-        camera.lookAt(0, 0, 0);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 14, 16);
+        camera.lookAt(0, 0, -2);
 
-        const renderer = new THREE.WebGLRenderer();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 조명 추가
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(5, 10, 7.5);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040));
+        // 조명
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
-        // 바닥 생성
-        const floorGeo = new THREE.BoxGeometry(20, 1, 20);
-        const floorMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.position.y = -0.5;
-        scene.add(floor);
+        // 오브젝트 변수들
+        let floorMesh, doorMesh, goalMesh;
+        let switchMeshes = [];
+        let p1Mesh, p2Mesh;
 
-        // 2. 플레이어 캐릭터 생성 (내 캐릭터 & 상대 캐릭터)
+        // 플레이어 캐릭터 생성
         const playerGeo = new THREE.BoxGeometry(1, 1, 1);
-        
-        // 내 캐릭터 (초록색)
-        const myMat = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
-        const myPlayer = new THREE.Mesh(playerGeo, myMat);
-        myPlayer.position.set(-2, 0.5, 0);
-        scene.add(myPlayer);
+        p1Mesh = new THREE.Mesh(playerGeo, new THREE.MeshLambertMaterial({ color: 0x00ff88 })); // 초록 (내 캐릭터 기본)
+        p2Mesh = new THREE.Mesh(playerGeo, new THREE.MeshLambertMaterial({ color: 0xff3366 })); // 분홍 (상대 캐릭터 기본)
+        scene.add(p1Mesh);
+        scene.add(p2Mesh);
 
-        // 상대 캐릭터 (빨간색)
-        const otherMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-        const otherPlayer = new THREE.Mesh(playerGeo, otherMat);
-        otherPlayer.position.set(2, 0.5, 0);
-        scene.add(otherPlayer);
+        // -------------------------------------------------------------
+        // 3. 맵 로딩 로직
+        // -------------------------------------------------------------
+        function loadStage(stageIdx) {
+            const data = MAP_DATA[stageIdx];
+            document.getElementById('stage-num').innerText = stageIdx + 1;
 
-        // 3. 키보드 입력 처리
+            // 기존 맵 요소 제거
+            if (floorMesh) scene.remove(floorMesh);
+            if (doorMesh) scene.remove(doorMesh);
+            if (goalMesh) scene.remove(goalMesh);
+            switchMeshes.forEach(s => scene.remove(s));
+            switchMeshes = [];
+
+            // 1) 바닥
+            const floorGeo = new THREE.BoxGeometry(data.floor.w, 0.5, data.floor.h);
+            floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({ color: 0x16213e }));
+            floorMesh.position.set(0, -0.25, 0);
+            scene.add(floorMesh);
+
+            // 2) 스위치들 (노란색)
+            data.switches.forEach(sw => {
+                const swGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16);
+                const swMesh = new THREE.Mesh(swGeo, new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
+                swMesh.position.set(sw.x, 0.1, sw.z);
+                swMesh.isPressed = false;
+                scene.add(swMesh);
+                switchMeshes.push(swMesh);
+            });
+
+            // 3) 문 (빨간색)
+            const doorGeo = new THREE.BoxGeometry(data.door.w, data.door.h, 0.5);
+            doorMesh = new THREE.Mesh(doorGeo, new THREE.MeshLambertMaterial({ color: 0xe94560 }));
+            doorMesh.position.set(data.door.x, data.door.h / 2, data.door.z);
+            scene.add(doorMesh);
+
+            // 4) 골인 지점 (파란색 구체)
+            const goalGeo = new THREE.SphereGeometry(1, 16, 16);
+            goalMesh = new THREE.Mesh(goalGeo, new THREE.MeshLambertMaterial({ color: 0x00d2fc, wireframe: true }));
+            goalMesh.position.set(data.goal.x, 1, data.goal.z);
+            scene.add(goalMesh);
+
+            // 플레이어 스폰 위치 세팅
+            p1Mesh.position.set(data.spawnP1.x, 0.5, data.spawnP1.z);
+            p2Mesh.position.set(data.spawnP2.x, 0.5, data.spawnP2.z);
+        }
+
+        loadStage(0);
+
+        // -------------------------------------------------------------
+        // 4. 키보드 입력 및 네트워크 동기화
+        // -------------------------------------------------------------
         const keys = {};
         window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
         window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-        // 4. PeerJS 멀티플레이 동기화 설정
         const peer = new Peer();
         let conn = null;
 
@@ -76,13 +164,11 @@
             document.getElementById('my-id').innerText = id;
         });
 
-        // 상대방이 내 ID로 접속했을 때
         peer.on('connection', (connection) => {
             conn = connection;
             setupConnection();
         });
 
-        // 내가 상대방 ID로 접속할 때
         function connectToPeer() {
             const otherId = document.getElementById('other-id').value;
             conn = peer.connect(otherId);
@@ -90,31 +176,87 @@
         }
 
         function setupConnection() {
+            document.getElementById('status').innerText = '상태: 연결 성공!';
+            document.getElementById('status').style.color = '#00ff88';
+
             conn.on('data', (data) => {
-                // 상대방의 위치 데이터를 받아서 상대 플레이어 위치 업데이트
-                otherPlayer.position.set(data.x, data.y, data.z);
+                // 상대방 위치 업데이트
+                p2Mesh.position.set(data.x, data.y, data.z);
+
+                // 상대방이 맵 이동 신호를 보낸 경우
+                if (data.stage !== undefined && data.stage !== currentStage) {
+                    currentStage = data.stage;
+                    loadStage(currentStage);
+                }
             });
         }
 
-        // 5. 프레임 업데이트 (게임 루프)
+        // -------------------------------------------------------------
+        // 5. 메인 게임 루프 (상호작용 및 물리 체크)
+        // -------------------------------------------------------------
         function animate() {
             requestAnimationFrame(animate);
 
-            // 이동 로직
-            const speed = 0.1;
+            // 1) 내 캐릭터 이동
+            const speed = 0.12;
             let moved = false;
 
-            if (keys['w'] || keys['arrowup']) { myPlayer.position.z -= speed; moved = true; }
-            if (keys['s'] || keys['arrowdown']) { myPlayer.position.z += speed; moved = true; }
-            if (keys['a'] || keys['arrowleft']) { myPlayer.position.x -= speed; moved = true; }
-            if (keys['d'] || keys['arrowright']) { myPlayer.position.x += speed; moved = true; }
+            if (keys['w'] || keys['arrowup']) { p1Mesh.position.z -= speed; moved = true; }
+            if (keys['s'] || keys['arrowdown']) { p1Mesh.position.z += speed; moved = true; }
+            if (keys['a'] || keys['arrowleft']) { p1Mesh.position.x -= speed; moved = true; }
+            if (keys['d'] || keys['arrowright']) { p1Mesh.position.x += speed; moved = true; }
 
-            // 내 위치가 바뀌었고 네트워크 연결이 되어있다면 데이터 전송
+            // 2) 스위치 감지 로직 (모든 스위치가 누군가에 의해 눌려야 함)
+            let pressedCount = 0;
+            switchMeshes.forEach(sw => {
+                const distP1 = p1Mesh.position.distanceTo(sw.position);
+                const distP2 = p2Mesh.position.distanceTo(sw.position);
+
+                if (distP1 < 1.0 || distP2 < 1.0) {
+                    sw.material.color.setHex(0x00ff00); // 밟으면 초록색
+                    pressedCount++;
+                } else {
+                    sw.material.color.setHex(0xffcc00); // 떼면 노란색
+                }
+            });
+
+            // 모든 스위치가 눌리면 문이 올라감 (열림)
+            if (pressedCount >= switchMeshes.length && switchMeshes.length > 0) {
+                if (doorMesh.position.y < 5) doorMesh.position.y += 0.05;
+            } else {
+                if (doorMesh.position.y > MAP_DATA[currentStage].door.h / 2) doorMesh.position.y -= 0.05;
+            }
+
+            // 3) 문에 막히는 간단한 충돌 처리
+            if (doorMesh.position.y < 3) {
+                const data = MAP_DATA[currentStage];
+                if (Math.abs(p1Mesh.position.z - data.door.z) < 0.5 &&
+                    Math.abs(p1Mesh.position.x - data.door.x) < data.door.w / 2) {
+                    p1Mesh.position.z += 0.2; // 튕겨냄
+                }
+            }
+
+            // 4) 골인 지점 도달 체크 (두 플레이어 모두 도달해야 다음 스테이지)
+            const distGoalP1 = p1Mesh.position.distanceTo(goalMesh.position);
+            const distGoalP2 = p2Mesh.position.distanceTo(goalMesh.position);
+
+            if (distGoalP1 < 1.5 && distGoalP2 < 1.5) {
+                if (currentStage < MAP_DATA.length - 1) {
+                    currentStage++;
+                    loadStage(currentStage);
+                    alert(`축하합니다! Stage ${currentStage} 클리어! 다음 맵으로 이동합니다.`);
+                } else {
+                    alert('🎉 모든 스테이지를 클리어했습니다! 게임을 종료합니다.');
+                }
+            }
+
+            // 5) 내 위치 및 스테이지 데이터 전송
             if (moved && conn && conn.open) {
                 conn.send({
-                    x: myPlayer.position.x,
-                    y: myPlayer.position.y,
-                    z: myPlayer.position.z
+                    x: p1Mesh.position.x,
+                    y: p1Mesh.position.y,
+                    z: p1Mesh.position.z,
+                    stage: currentStage
                 });
             }
 
@@ -123,7 +265,6 @@
 
         animate();
 
-        // 창 크기 변경 시 카메라 비율 조정
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
