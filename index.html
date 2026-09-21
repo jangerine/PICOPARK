@@ -86,13 +86,11 @@
         </div>
 
         <div style="margin-top: 8px;">
-            <label style="font-size: 11px; color: #94a3b8;">스테이지 건너뛰기</label>
-            <select id="stage-select" onchange="skipStage(this.value)">
-                <!-- JS에서 30개 자동 생성 -->
-            </select>
+            <label style="font-size: 11px; color: #94a3b8;">스테이지 선택</label>
+            <select id="stage-select" onchange="skipStage(this.value)"></select>
         </div>
 
-        <div id="status-text">상태: 싱글/멀티 대기 중</div>
+        <div id="status-text">상태: 싱글 플레이 가능 (친구 접속 대기)</div>
     </div>
 
     <div id="stage-badge">
@@ -102,7 +100,7 @@
 
     <div id="controls-guide">
         💡 <b>조작:</b> A/D (이동), Space / W (점프)<br>
-        협동하여 열쇠를 꽂거나 스위치를 눌러 오른쪽 관문으로 함께 들어가세요!
+        혼자 플레이 시 P1만 골인해도 이동하며, 멀티 시 모두 진입해야 넘어갑니다!
     </div>
 
     <div id="touch-controls">
@@ -112,11 +110,10 @@
     </div>
 
     <script>
-        // --- 1. 30 Stages Database Definition ---
+        // --- 1. 30 Stages Database ---
         const STAGES = [];
         const STAGE_TYPES = ["KEY", "SWITCH", "BLOCK", "SPIKE"];
 
-        // 30개의 다양한 기믹을 가진 스테이지 데이터 자동 구성
         for (let i = 1; i <= 30; i++) {
             const type = STAGE_TYPES[(i - 1) % 4];
             let name = "";
@@ -136,7 +133,7 @@
             if (type === "KEY") {
                 name = `Stage ${i}: Key Stacking ${Math.ceil(i/4)}`;
                 data.keyPos = { x: -6 + (i % 3), y: 2.5 };
-                data.lockPos = { x: 3 + (i % 4), y: 4.5 + (i % 2) * 0.8 }; // 높은 곳에 있어 스태킹 필수
+                data.lockPos = { x: 3 + (i % 4), y: 4.5 + (i % 2) * 0.8 };
             } else if (type === "SWITCH") {
                 name = `Stage ${i}: Dual Switch ${Math.ceil(i/4)}`;
                 data.switches = [
@@ -145,7 +142,7 @@
                 ];
             } else if (type === "BLOCK") {
                 name = `Stage ${i}: Block Push ${Math.ceil(i/4)}`;
-                data.blocks = [{ x: -2, y: 0.75, w: 1.5, h: 1.5 }]; // 길을 막고 있는 밀 수 있는 상자
+                data.blocks = [{ x: -2, y: 0.75, w: 1.5, h: 1.5 }];
             } else if (type === "SPIKE") {
                 name = `Stage ${i}: Spike Jump ${Math.ceil(i/4)}`;
                 data.spikes = [
@@ -157,7 +154,6 @@
 
         let currentStageIdx = 0;
 
-        // UI에 스테이지 선택 옵션 채우기
         const stageSelect = document.getElementById('stage-select');
         STAGES.forEach((s, idx) => {
             const opt = document.createElement('option');
@@ -166,7 +162,7 @@
             stageSelect.appendChild(opt);
         });
 
-        // --- 2. Three.js Engine Setup ---
+        // --- 2. Three.js Setup ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0f172a);
@@ -187,11 +183,9 @@
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // Map Object Containers
         let floorMesh, doorMesh, goalMesh, keyMesh, lockMesh;
         let switchMeshes = [], spikeMeshes = [], blockMeshes = [];
 
-        // Players
         const PLAYER_SIZE = 0.9;
         const playerGeo = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
         
@@ -203,7 +197,6 @@
         p2Mesh.castShadow = true;
         scene.add(p2Mesh);
 
-        // State Variables
         let vy = 0;
         const gravity = -0.015;
         const jumpPower = 0.32;
@@ -212,6 +205,7 @@
         let keyCarrier = null;
         let isDoorUnlocked = false;
         let isClearing = false;
+        let isMultiplayer = false;
 
         // --- 3. Stage Builder ---
         function buildStage(idx) {
@@ -222,7 +216,6 @@
             document.getElementById('stage-name').innerText = data.name;
             document.getElementById('stage-select').value = idx;
 
-            // Clear Old Meshes
             if (floorMesh) scene.remove(floorMesh);
             if (doorMesh) scene.remove(doorMesh);
             if (goalMesh) scene.remove(goalMesh);
@@ -232,30 +225,27 @@
             spikeMeshes.forEach(m => scene.remove(m)); spikeMeshes = [];
             blockMeshes.forEach(m => scene.remove(m)); blockMeshes = [];
 
-            // Reset States
             hasKey = false;
             keyCarrier = null;
             isDoorUnlocked = false;
+            isClearing = false;
 
-            // 1. Floor
             const floorGeo = new THREE.BoxGeometry(28, 2, 2);
             floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
             floorMesh.position.set(0, -1, 0);
             floorMesh.receiveShadow = true;
             scene.add(floorMesh);
 
-            // 2. Door & Goal
             const doorGeo = new THREE.BoxGeometry(0.8, 5, 0.8);
             doorMesh = new THREE.Mesh(doorGeo, new THREE.MeshStandardMaterial({ color: 0xd97706 }));
             doorMesh.position.set(data.doorX, 2.5, 0);
             scene.add(doorMesh);
 
-            const goalGeo = new THREE.BoxGeometry(2.5, 3.5, 0.2);
+            const goalGeo = new THREE.BoxGeometry(3.0, 3.5, 0.2);
             goalMesh = new THREE.Mesh(goalGeo, new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 }));
             goalMesh.position.set(data.goalX, 1.75, 0);
             scene.add(goalMesh);
 
-            // 3. Stage Specific Gimmicks
             if (data.type === "KEY") {
                 const keyGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
                 keyMesh = new THREE.Mesh(keyGeo, new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8 }));
@@ -289,7 +279,6 @@
                 });
             }
 
-            // Spawn Players
             p1Mesh.position.set(data.p1Spawn.x, data.p1Spawn.y, 0);
             p2Mesh.position.set(data.p2Spawn.x, data.p2Spawn.y, 0);
             vy = 0;
@@ -302,7 +291,7 @@
             if (conn && conn.open) conn.send({ changeStage: parseInt(val) });
         }
 
-        // --- 4. Controls & Input ---
+        // --- 4. Controls ---
         const keys = {};
         window.addEventListener('keydown', e => {
             keys[e.key.toLowerCase()] = true;
@@ -327,7 +316,7 @@
 
         // --- 5. PeerJS Network ---
         let peer = null, conn = null;
-        const PREFIX = "pico-park-30s-";
+        const PREFIX = "pico-park-30s-v2-";
 
         function createRoom() {
             const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
@@ -356,7 +345,10 @@
         }
 
         function initConnection() {
-            conn.on('open', () => setStatus("연결 성공! 🟢", "#10b981"));
+            conn.on('open', () => {
+                isMultiplayer = true;
+                setStatus("연결 성공! 2P 멀티플레이어 🟢", "#10b981");
+            });
             conn.on('data', data => {
                 p2Mesh.position.set(data.x, data.y, 0);
                 if (data.changeStage !== undefined && data.changeStage !== currentStageIdx) {
@@ -380,13 +372,13 @@
             let moved = false;
             const currentData = STAGES[currentStageIdx];
 
-            // X Movement
+            // Movement
             if (keys['a'] || keys['arrowleft'] || touchState.left) { p1Mesh.position.x -= speed; moved = true; }
             if (keys['d'] || keys['arrowright'] || touchState.right) { p1Mesh.position.x += speed; moved = true; }
 
             p1Mesh.position.x = Math.max(-13.5, Math.min(13.5, p1Mesh.position.x));
 
-            // Gravity & Stacking Logic
+            // Gravity & Stacking
             vy += gravity;
             p1Mesh.position.y += vy;
 
@@ -415,8 +407,7 @@
                 moved = true;
             }
 
-            // --- Gimmicks Interaction ---
-            // 1. KEY TYPE
+            // --- Gimmicks ---
             if (currentData.type === "KEY" && keyMesh && lockMesh) {
                 if (!hasKey) {
                     if (p1Mesh.position.distanceTo(keyMesh.position) < 1.0) { hasKey = true; keyCarrier = 1; }
@@ -430,10 +421,7 @@
                         scene.remove(keyMesh);
                     }
                 }
-            }
-
-            // 2. SWITCH TYPE
-            if (currentData.type === "SWITCH") {
+            } else if (currentData.type === "SWITCH") {
                 let activeCnt = 0;
                 switchMeshes.forEach(sw => {
                     if (Math.abs(p1Mesh.position.x - sw.position.x) < 0.8 || Math.abs(p2Mesh.position.x - sw.position.x) < 0.8) {
@@ -445,25 +433,18 @@
                 });
                 if (activeCnt >= switchMeshes.length && switchMeshes.length > 0) isDoorUnlocked = true;
                 else if (switchMeshes.length > 0) isDoorUnlocked = false;
-            }
-
-            // 3. BLOCK TYPE (Push Block)
-            if (currentData.type === "BLOCK") {
-                isDoorUnlocked = true; // 문은 열려있되 블록을 밀어야 통과 가능
+            } else if (currentData.type === "BLOCK") {
+                isDoorUnlocked = true;
                 blockMeshes.forEach(b => {
                     if (Math.abs(p1Mesh.position.x - b.position.x) < 1.0 && Math.abs(p1Mesh.position.y - b.position.y) < 0.8) {
                         if (p1Mesh.position.x < b.position.x) b.position.x += 0.05;
                         else b.position.x -= 0.05;
                     }
                 });
-            }
-
-            // 4. SPIKE TYPE (Respawn on hit)
-            if (currentData.type === "SPIKE") {
+            } else if (currentData.type === "SPIKE") {
                 isDoorUnlocked = true;
                 spikeMeshes.forEach(sp => {
                     if (p1Mesh.position.distanceTo(sp.position) < 0.7) {
-                        // 리스폰
                         p1Mesh.position.set(currentData.p1Spawn.x, currentData.p1Spawn.y, 0);
                         vy = 0;
                     }
@@ -479,22 +460,26 @@
                 }
             }
 
-            // Goal Clearance
-            const inGoalP1 = (p1Mesh.position.x >= currentData.goalX - 1.2 && p1Mesh.position.x <= currentData.goalX + 1.2);
-            const inGoalP2 = (p2Mesh.position.x >= currentData.goalX - 1.2 && p2Mesh.position.x <= currentData.goalX + 1.2);
+            // 🎯 [수정된 골인 판정] 
+            // 넓은 영역(X: 10.0 ~ 14.0) 판정
+            const inGoalP1 = (p1Mesh.position.x >= 10.0 && p1Mesh.position.x <= 14.0);
+            const inGoalP2 = (p2Mesh.position.x >= 10.0 && p2Mesh.position.x <= 14.0);
 
-            if (inGoalP1 && inGoalP2 && !isClearing) {
+            // 멀티플레이 중이면 둘 다 필요, 싱글 플레이면 P1 혼자 골인 시 바로 클리어!
+            const canClear = isMultiplayer ? (inGoalP1 && inGoalP2) : inGoalP1;
+
+            if (canClear && !isClearing) {
                 isClearing = true;
+                
                 setTimeout(() => {
                     if (currentStageIdx < STAGES.length - 1) {
-                        alert(`🎉 STAGE ${currentStageIdx + 1} 클리어! 다음 스테이지로 이동합니다.`);
-                        buildStage(currentStageIdx + 1);
-                        if (conn && conn.open) conn.send({ changeStage: currentStageIdx });
+                        const nextIdx = currentStageIdx + 1;
+                        buildStage(nextIdx);
+                        if (conn && conn.open) conn.send({ changeStage: nextIdx });
                     } else {
                         alert("🏆 축하합니다! 30개의 모든 스테이지를 클리어하셨습니다!");
                     }
-                    isClearing = false;
-                }, 100);
+                }, 50);
             }
 
             // Network Sync
