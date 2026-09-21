@@ -106,7 +106,7 @@
     </div>
 
     <script>
-        // --- 1. Three.js Setup (Side View Camera) ---
+        // --- 1. Three.js Setup ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0f172a);
@@ -121,7 +121,6 @@
         renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
-        // Lights
         scene.add(new THREE.AmbientLight(0xffffff, 0.7));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
         dirLight.position.set(0, 15, 10);
@@ -129,7 +128,6 @@
         scene.add(dirLight);
 
         // --- 2. Stage 1-1 Map Objects ---
-        // Floor
         const floorGeo = new THREE.BoxGeometry(28, 2, 2);
         const floorMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
         const floorMesh = new THREE.Mesh(floorGeo, floorMat);
@@ -139,18 +137,18 @@
 
         // Key Object
         let hasKey = false;
-        let keyCarrier = null; // 1: P1, 2: P2
+        let keyCarrier = null;
         const keyGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
         const keyMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 });
         const keyMesh = new THREE.Mesh(keyGeo, keyMat);
-        keyMesh.position.set(-8, 2.5, 0); // 왼쪽에 떠 있음
+        keyMesh.position.set(-8, 2.5, 0);
         scene.add(keyMesh);
 
-        // Key Hole (Lock Platform - 높이 배치)
+        // Key Hole (Lock Platform)
         const lockGeo = new THREE.BoxGeometry(1.2, 1.2, 0.4);
         const lockMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
         const lockMesh = new THREE.Mesh(lockGeo, lockMat);
-        lockMesh.position.set(4, 5.0, 0); // 목마 타고 가야 닿는 높은 위치
+        lockMesh.position.set(4, 5.0, 0);
         scene.add(lockMesh);
 
         // Door Barrier
@@ -161,14 +159,14 @@
         doorMesh.position.set(9, 2.5, 0);
         scene.add(doorMesh);
 
-        // Goal Post (Doorway)
-        const goalGeo = new THREE.BoxGeometry(1.5, 3, 0.2);
+        // Goal Door Frame & Area
+        const goalGeo = new THREE.BoxGeometry(2.5, 3.5, 0.2);
         const goalMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 });
         const goalMesh = new THREE.Mesh(goalGeo, goalMat);
-        goalMesh.position.set(12, 1.5, 0);
+        goalMesh.position.set(12, 1.75, 0);
         scene.add(goalMesh);
 
-        // Players (P1: Green, P2: Pink)
+        // Players
         const PLAYER_SIZE = 0.9;
         const playerGeo = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
         
@@ -187,6 +185,7 @@
         const gravity = -0.015;
         const jumpPower = 0.32;
         let isGrounded = false;
+        let isClearing = false;
 
         // Controls
         const keys = {};
@@ -255,7 +254,7 @@
             el.innerText = msg; el.style.color = color;
         }
 
-        // --- 4. Main Physics Loop ---
+        // --- 4. Main Loop ---
         function animate() {
             requestAnimationFrame(animate);
 
@@ -266,14 +265,13 @@
             if (keys['a'] || keys['arrowleft'] || touchState.left) { p1Mesh.position.x -= speed; moved = true; }
             if (keys['d'] || keys['arrowright'] || touchState.right) { p1Mesh.position.x += speed; moved = true; }
 
-            // Stage Bounds
             p1Mesh.position.x = Math.max(-13.5, Math.min(13.5, p1Mesh.position.x));
 
             // Gravity & Vertical Physics
             vy += gravity;
             p1Mesh.position.y += vy;
 
-            // Stacking (Riding Head) Engine
+            // Stacking Engine
             const floorY = 0.45;
             let groundY = floorY;
 
@@ -309,37 +307,44 @@
                     keyCarrier = 2;
                 }
             } else {
-                // Key follows carrier
                 if (keyCarrier === 1) keyMesh.position.set(p1Mesh.position.x, p1Mesh.position.y + 0.8, 0);
                 else keyMesh.position.set(p2Mesh.position.x, p2Mesh.position.y + 0.8, 0);
 
-                // Unlock Key Hole Check
                 if (keyMesh.position.distanceTo(lockMesh.position) < 1.2) {
                     isDoorUnlocked = true;
-                    scene.remove(keyMesh); // Consume Key
+                    scene.remove(keyMesh);
                 }
             }
 
             // Door Opening Logic
             if (isDoorUnlocked) {
-                if (doorMesh.position.y < 5.5) doorMesh.position.y += 0.08; // Gate Lift
+                if (doorMesh.position.y < 5.5) doorMesh.position.y += 0.08;
             } else {
-                // Door Collision Barrier
                 if (Math.abs(p1Mesh.position.x - doorMesh.position.x) < 0.6 && p1Mesh.position.y < 4) {
                     p1Mesh.position.x = doorMesh.position.x - 0.6;
                 }
             }
 
-            // Goal Clear Check
-            if (p1Mesh.position.distanceTo(goalMesh.position) < 1.2 && p2Mesh.position.distanceTo(goalMesh.position) < 1.2) {
-                alert("🎉 STAGE 1-1 Key Carrier 클리어!");
-                p1Mesh.position.set(-11, 0.45, 0);
-                p2Mesh.position.set(-9.5, 0.45, 0);
-                hasKey = false;
-                isDoorUnlocked = false;
-                doorMesh.position.set(9, 2.5, 0);
-                scene.add(keyMesh);
-                keyMesh.position.set(-8, 2.5, 0);
+            // 🎯 [개선된 골인 판정] 
+            // 파란색 문 영역(X: 10.75 ~ 13.25)에 플레이어 2명이 모두 들어왔는지 사각형 영역으로 체크
+            const inGoalP1 = (p1Mesh.position.x >= 10.5 && p1Mesh.position.x <= 13.5);
+            const inGoalP2 = (p2Mesh.position.x >= 10.5 && p2Mesh.position.x <= 13.5);
+
+            if (inGoalP1 && inGoalP2 && !isClearing) {
+                isClearing = true; // 중복 실행 방지
+                setTimeout(() => {
+                    alert("🎉 STAGE 1-1 Key Carrier 클리어!");
+                    
+                    // Reset Game State
+                    p1Mesh.position.set(-11, 0.45, 0);
+                    p2Mesh.position.set(-9.5, 0.45, 0);
+                    hasKey = false;
+                    isDoorUnlocked = false;
+                    doorMesh.position.set(9, 2.5, 0);
+                    scene.add(keyMesh);
+                    keyMesh.position.set(-8, 2.5, 0);
+                    isClearing = false;
+                }, 100);
             }
 
             // Sync Multi
