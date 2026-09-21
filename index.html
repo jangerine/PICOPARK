@@ -3,33 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pico Park - Stacking & Side View Game</title>
+    <title>Pico Park - Stage 1-1 Key Carrier Edition</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { overflow: hidden; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0c10; color: #fff; user-select: none; }
+        body { overflow: hidden; font-family: 'Pretendard', -apple-system, sans-serif; background-color: #0b0c10; color: #fff; user-select: none; }
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
         
-        /* UI Overlay */
         #ui-panel {
             position: absolute; top: 15px; left: 15px; z-index: 10;
             background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px;
             padding: 16px; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
-        #ui-panel h2 { font-size: 18px; margin-bottom: 12px; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+        #ui-panel h2 { font-size: 18px; margin-bottom: 12px; color: #38bdf8; }
         
-        .room-box {
-            background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; text-align: center;
-        }
-        .room-code {
-            font-size: 24px; font-weight: bold; color: #38bdf8; letter-spacing: 4px; font-family: monospace; margin: 4px 0;
-        }
+        .room-box { background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
+        .room-code { font-size: 24px; font-weight: bold; color: #38bdf8; letter-spacing: 4px; font-family: monospace; margin: 4px 0; }
         
         input[type="text"] {
             width: 100%; padding: 10px; margin: 6px 0; border-radius: 6px;
-            border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 14px; outline: none; text-align: center; letter-spacing: 2px;
+            border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 14px; outline: none; text-align: center;
         }
-        input[type="text"]:focus { border-color: #38bdf8; }
         
         button {
             width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: none;
@@ -45,7 +39,7 @@
             position: absolute; top: 15px; right: 15px; z-index: 10;
             background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
             border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px;
-            padding: 12px 20px; font-size: 18px; font-weight: 700; color: #38bdf8;
+            padding: 12px 20px; font-size: 16px; font-weight: 700; color: #38bdf8;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
 
@@ -56,25 +50,20 @@
             padding: 12px 16px; font-size: 12px; color: #cbd5e1; line-height: 1.6;
         }
         
-        /* Mobile Touch Controls */
+        /* Mobile Controls */
         #touch-controls {
             position: absolute; bottom: 20px; right: 20px; z-index: 10;
             display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 5px;
         }
         .touch-btn {
             background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px; color: white; font-size: 18px; display: flex;
-            align-items: center; justify-content: center; backdrop-filter: blur(4px);
+            border-radius: 10px; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center;
         }
-        .touch-btn:active { background: rgba(56, 189, 248, 0.4); }
         #btn-up { grid-column: 2; grid-row: 1; }
         #btn-left { grid-column: 1; grid-row: 2; }
-        #btn-down { grid-column: 2; grid-row: 2; }
         #btn-right { grid-column: 3; grid-row: 2; }
 
-        @media (min-width: 768px) {
-            #touch-controls { display: none; }
-        }
+        @media (min-width: 768px) { #touch-controls { display: none; } }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -83,10 +72,10 @@
     <div id="canvas-container"></div>
 
     <div id="ui-panel">
-        <h2>🎮 3D Pico Park</h2>
+        <h2>🔑 Pico Park STAGE 1-1</h2>
         
         <div class="room-box">
-            <button class="host-btn" onclick="createRoom()">🏠 방 만들기 (4자리 코드)</button>
+            <button class="host-btn" onclick="createRoom()">🏠 방 만들기</button>
             <div id="host-code-display" style="display:none; margin-top:8px;">
                 <span style="font-size:12px; color:#94a3b8;">생성된 방 코드</span>
                 <div id="room-code-num" class="room-code">----</div>
@@ -94,68 +83,36 @@
         </div>
 
         <div style="margin-top: 10px;">
-            <input type="text" id="join-code" placeholder="4자리 방 코드 입력" maxlength="4">
+            <input type="text" id="join-code" placeholder="4자리 방 코드" maxlength="4">
             <button onclick="joinRoom()">입장하기</button>
         </div>
 
         <div id="status-text">상태: 대기 중</div>
     </div>
 
-    <div id="stage-badge">STAGE <span id="stage-num">1</span> / 3</div>
+    <div id="stage-badge">STAGE 1-1 : KEY CARRIER</div>
 
     <div id="controls-guide">
-        💡 <b>플레이 방법:</b><br>
-        - 좌우 이동 (A/D 또는 ◀/▶)<br>
-        - **점프 (Spacebar / W / ▲)**<br>
-        - **친구 머리 위에 올라타기 가능!**<br>
-        - 스위치 2개를 밟아 문을 열고 파란 구체로 골인하세요.
+        🎯 <b>원작 미션:</b><br>
+        1. 공중에 떠 있는 <b>노란 열쇠</b>를 획득하세요.<br>
+        2. 열쇠 구멍이 높이 있으므로 <b>친구 위에 올라타서(스태킹)</b> 열쇠를 꽂으세요.<br>
+        3. 닫힌 문이 열리면 둘 다 오른쪽 <b>Door로 골인</b>하세요!
     </div>
 
     <div id="touch-controls">
         <div class="touch-btn" id="btn-up">▲</div>
         <div class="touch-btn" id="btn-left">◀</div>
-        <div class="touch-btn" id="btn-down">▼</div>
         <div class="touch-btn" id="btn-right">▶</div>
     </div>
 
     <script>
-        // --- 1. Stage Data Definition ---
-        const STAGES = [
-            {
-                name: "Stage 1: 기본 협동 & 스태킹",
-                floor: { w: 20, h: 2, d: 2 },
-                switches: [{ x: -6, y: 0 }, { x: 6, y: 0 }],
-                door: { x: 0, y: 1.5, w: 0.6, h: 3 },
-                goal: { x: 0, y: 4.5 },
-                spawns: [{ x: -3, y: 0.45 }, { x: 3, y: 0.45 }]
-            },
-            {
-                name: "Stage 2: 높은 골인 지점 (목마 필수)",
-                floor: { w: 26, h: 2, d: 2 },
-                switches: [{ x: -9, y: 0 }, { x: 9, y: 0 }],
-                door: { x: 0, y: 1.5, w: 0.6, h: 3 },
-                goal: { x: 0, y: 6.0 }, // 친구 위에 타야 닿는 높이
-                spawns: [{ x: -2, y: 0.45 }, { x: 2, y: 0.45 }]
-            },
-            {
-                name: "Stage 3: 장거리 레이스",
-                floor: { w: 32, h: 2, d: 2 },
-                switches: [{ x: -12, y: 0 }, { x: 12, y: 0 }],
-                door: { x: 0, y: 1.5, w: 0.6, h: 3 },
-                goal: { x: 0, y: 5.0 },
-                spawns: [{ x: -4, y: 0.45 }, { x: 4, y: 0.45 }]
-            }
-        ];
-
-        let currentStageIdx = 0;
-
-        // --- 2. Three.js Setup (Side View) ---
+        // --- 1. Three.js Setup (Side View Camera) ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0f172a);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 3, 22);
+        camera.position.set(0, 3, 24);
         camera.lookAt(0, 2, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -165,93 +122,73 @@
         container.appendChild(renderer.domElement);
 
         // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
         dirLight.position.set(0, 15, 10);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // Objects Containers
-        let floorMesh, doorMesh, goalMesh;
-        let switchMeshes = [];
+        // --- 2. Stage 1-1 Map Objects ---
+        // Floor
+        const floorGeo = new THREE.BoxGeometry(28, 2, 2);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.position.set(0, -1, 0);
+        floorMesh.receiveShadow = true;
+        scene.add(floorMesh);
 
-        // Players Physical Specs
+        // Key Object
+        let hasKey = false;
+        let keyCarrier = null; // 1: P1, 2: P2
+        const keyGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
+        const keyMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 });
+        const keyMesh = new THREE.Mesh(keyGeo, keyMat);
+        keyMesh.position.set(-8, 2.5, 0); // 왼쪽에 떠 있음
+        scene.add(keyMesh);
+
+        // Key Hole (Lock Platform - 높이 배치)
+        const lockGeo = new THREE.BoxGeometry(1.2, 1.2, 0.4);
+        const lockMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+        const lockMesh = new THREE.Mesh(lockGeo, lockMat);
+        lockMesh.position.set(4, 5.0, 0); // 목마 타고 가야 닿는 높은 위치
+        scene.add(lockMesh);
+
+        // Door Barrier
+        let isDoorUnlocked = false;
+        const doorGeo = new THREE.BoxGeometry(0.8, 5, 0.8);
+        const doorMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
+        const doorMesh = new THREE.Mesh(doorGeo, doorMat);
+        doorMesh.position.set(9, 2.5, 0);
+        scene.add(doorMesh);
+
+        // Goal Post (Doorway)
+        const goalGeo = new THREE.BoxGeometry(1.5, 3, 0.2);
+        const goalMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 });
+        const goalMesh = new THREE.Mesh(goalGeo, goalMat);
+        goalMesh.position.set(12, 1.5, 0);
+        scene.add(goalMesh);
+
+        // Players (P1: Green, P2: Pink)
         const PLAYER_SIZE = 0.9;
         const playerGeo = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
         
-        const p1Mat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3 });
-        const p1Mesh = new THREE.Mesh(playerGeo, p1Mat);
+        const p1Mesh = new THREE.Mesh(playerGeo, new THREE.MeshStandardMaterial({ color: 0x10b981 }));
+        p1Mesh.position.set(-11, 0.45, 0);
         p1Mesh.castShadow = true;
         scene.add(p1Mesh);
 
-        const p2Mat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3 });
-        const p2Mesh = new THREE.Mesh(playerGeo, p2Mat);
+        const p2Mesh = new THREE.Mesh(playerGeo, new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+        p2Mesh.position.set(-9.5, 0.45, 0);
         p2Mesh.castShadow = true;
         scene.add(p2Mesh);
 
-        // Physics State Variables for P1
-        let py = 0.45;
+        // Physics State Variables
         let vy = 0;
         const gravity = -0.015;
         const jumpPower = 0.32;
         let isGrounded = false;
 
-        // --- 3. Stage Builder ---
-        function buildStage(idx) {
-            const data = STAGES[idx];
-            document.getElementById('stage-num').innerText = idx + 1;
-
-            if (floorMesh) scene.remove(floorMesh);
-            if (doorMesh) scene.remove(doorMesh);
-            if (goalMesh) scene.remove(goalMesh);
-            switchMeshes.forEach(s => scene.remove(s));
-            switchMeshes = [];
-
-            // Floor
-            const floorGeo = new THREE.BoxGeometry(data.floor.w, data.floor.h, data.floor.d);
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
-            floorMesh = new THREE.Mesh(floorGeo, floorMat);
-            floorMesh.position.set(0, -1, 0);
-            floorMesh.receiveShadow = true;
-            scene.add(floorMesh);
-
-            // Switches
-            data.switches.forEach(sw => {
-                const swGeo = new THREE.BoxGeometry(1.2, 0.15, 0.9);
-                const swMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.2 });
-                const swMesh = new THREE.Mesh(swGeo, swMat);
-                swMesh.position.set(sw.x, 0.08, 0);
-                swMesh.receiveShadow = true;
-                scene.add(swMesh);
-                switchMeshes.push(swMesh);
-            });
-
-            // Door
-            const doorGeo = new THREE.BoxGeometry(data.door.w, data.door.h, 0.9);
-            const doorMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2 });
-            doorMesh = new THREE.Mesh(doorGeo, doorMat);
-            doorMesh.position.set(data.door.x, data.door.y, 0);
-            doorMesh.castShadow = true;
-            scene.add(doorMesh);
-
-            // Goal
-            const goalGeo = new THREE.SphereGeometry(0.8, 24, 24);
-            const goalMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, wireframe: true });
-            goalMesh = new THREE.Mesh(goalGeo, goalMat);
-            goalMesh.position.set(data.goal.x, data.goal.y, 0);
-            scene.add(goalMesh);
-
-            // Spawns
-            p1Mesh.position.set(data.spawns[0].x, data.spawns[0].y, 0);
-            p2Mesh.position.set(data.spawns[1].x, data.spawns[1].y, 0);
-            vy = 0;
-        }
-
-        buildStage(0);
-
-        // --- 4. Controls & Input ---
+        // Controls
         const keys = {};
         window.addEventListener('keydown', e => {
             keys[e.key.toLowerCase()] = true;
@@ -262,7 +199,7 @@
             if (e.code === 'Space') keys['space'] = false;
         });
 
-        const touchState = { up: false, down: false, left: false, right: false };
+        const touchState = { up: false, left: false, right: false };
         const bindTouch = (id, key) => {
             const btn = document.getElementById(id);
             btn.addEventListener('touchstart', e => { e.preventDefault(); touchState[key] = true; });
@@ -271,171 +208,147 @@
             btn.addEventListener('mouseup', e => { touchState[key] = false; });
         };
         bindTouch('btn-up', 'up');
-        bindTouch('btn-down', 'down');
         bindTouch('btn-left', 'left');
         bindTouch('btn-right', 'right');
 
-        // --- 5. PeerJS Logic ---
-        let peer = null;
-        let conn = null;
+        // --- 3. Networking (PeerJS) ---
+        let peer = null, conn = null;
         const PREFIX = "pico-park-room-";
 
         function createRoom() {
             const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-            const fullId = PREFIX + roomCode;
-
             if (peer) peer.destroy();
-            peer = new Peer(fullId);
+            peer = new Peer(PREFIX + roomCode);
 
-            peer.on('open', id => {
+            peer.on('open', () => {
                 document.getElementById('host-code-display').style.display = 'block';
                 document.getElementById('room-code-num').innerText = roomCode;
-                setStatus(`방 생성 완료! 코드: ${roomCode} (친구 대기 중)`, "#fbbf24");
+                setStatus(`방 코드: ${roomCode} (친구 대기 중)`, "#fbbf24");
             });
-
-            peer.on('connection', connection => {
-                conn = connection;
-                initConnection();
-            });
-
-            peer.on('error', err => {
-                if(err.type === 'unavailable-id') createRoom();
-                else setStatus("방 생성 중 오류 발생", "#ef4444");
-            });
+            peer.on('connection', connection => { conn = connection; initConnection(); });
         }
 
         function joinRoom() {
             const code = document.getElementById('join-code').value.trim();
-            if (code.length !== 4) return alert("4자리 방 코드를 정확히 입력하세요.");
-
-            const targetId = PREFIX + code;
+            if (code.length !== 4) return alert("4자리 방 코드를 입력하세요.");
             if (peer) peer.destroy();
             peer = new Peer();
 
             peer.on('open', () => {
-                setStatus("방 접속 시도 중...", "#fbbf24");
-                conn = peer.connect(targetId);
+                setStatus("접속 중...", "#fbbf24");
+                conn = peer.connect(PREFIX + code);
                 initConnection();
             });
-
-            peer.on('error', err => setStatus("방을 찾을 수 없거나 접속 불가", "#ef4444"));
         }
 
         function initConnection() {
-            conn.on('open', () => setStatus("연결 성공! 게임 시작 🟢", "#10b981"));
+            conn.on('open', () => setStatus("연결 완료! 게임 시작 🟢", "#10b981"));
             conn.on('data', data => {
                 p2Mesh.position.set(data.x, data.y, 0);
-
-                if (data.stage !== undefined && data.stage !== currentStageIdx) {
-                    currentStageIdx = data.stage;
-                    buildStage(currentStageIdx);
-                }
+                if (data.hasKey !== undefined) hasKey = data.hasKey;
+                if (data.isUnlocked !== undefined) isDoorUnlocked = data.isUnlocked;
             });
         }
 
         function setStatus(msg, color) {
             const el = document.getElementById('status-text');
-            el.innerText = msg;
-            el.style.color = color;
+            el.innerText = msg; el.style.color = color;
         }
 
-        // --- 6. Physics & Stacking Main Loop ---
+        // --- 4. Main Physics Loop ---
         function animate() {
             requestAnimationFrame(animate);
 
             const speed = 0.12;
             let moved = false;
 
-            // X-Axis Movement (Left/Right)
+            // X Movement
             if (keys['a'] || keys['arrowleft'] || touchState.left) { p1Mesh.position.x -= speed; moved = true; }
             if (keys['d'] || keys['arrowright'] || touchState.right) { p1Mesh.position.x += speed; moved = true; }
 
-            // Boundary Limit
-            const stageFloorW = STAGES[currentStageIdx].floor.w / 2;
-            p1Mesh.position.x = Math.max(-stageFloorW + 0.45, Math.min(stageFloorW - 0.45, p1Mesh.position.x));
+            // Stage Bounds
+            p1Mesh.position.x = Math.max(-13.5, Math.min(13.5, p1Mesh.position.x));
 
-            // Vertical Physics & Stacking Engine
+            // Gravity & Vertical Physics
             vy += gravity;
             p1Mesh.position.y += vy;
 
-            // Ground Floor Plane Collision
-            const floorSurfaceY = 0.45;
-            let currentGroundHeight = floorSurfaceY;
+            // Stacking (Riding Head) Engine
+            const floorY = 0.45;
+            let groundY = floorY;
 
-            // Check if P1 is directly on top of P2 (Stacking/Riding Head)
             const dx = Math.abs(p1Mesh.position.x - p2Mesh.position.x);
             const p2HeadY = p2Mesh.position.y + PLAYER_SIZE;
 
             if (dx < PLAYER_SIZE * 0.85 && p1Mesh.position.y >= p2Mesh.position.y) {
-                currentGroundHeight = Math.max(floorSurfaceY, p2HeadY);
+                groundY = Math.max(floorY, p2HeadY);
             }
 
-            // Ground Collision Trigger
-            if (p1Mesh.position.y <= currentGroundHeight) {
-                p1Mesh.position.y = currentGroundHeight;
+            if (p1Mesh.position.y <= groundY) {
+                p1Mesh.position.y = groundY;
                 vy = 0;
                 isGrounded = true;
             } else {
                 isGrounded = false;
             }
 
-            // Jump Handling
+            // Jump
             if ((keys['w'] || keys['arrowup'] || keys['space'] || touchState.up) && isGrounded) {
                 vy = jumpPower;
                 isGrounded = false;
                 moved = true;
             }
 
-            // Switches Check
-            let activeSwitches = 0;
-            switchMeshes.forEach(sw => {
-                const dist1 = Math.abs(p1Mesh.position.x - sw.position.x);
-                const dist2 = Math.abs(p2Mesh.position.x - sw.position.x);
-
-                if ((dist1 < 0.8 && p1Mesh.position.y < 0.6) || (dist2 < 0.8 && p2Mesh.position.y < 0.6)) {
-                    sw.material.color.setHex(0x10b981);
-                    activeSwitches++;
-                } else {
-                    sw.material.color.setHex(0xf59e0b);
+            // Key Pick Up Check
+            if (!hasKey) {
+                if (p1Mesh.position.distanceTo(keyMesh.position) < 1.0) {
+                    hasKey = true;
+                    keyCarrier = 1;
+                } else if (p2Mesh.position.distanceTo(keyMesh.position) < 1.0) {
+                    hasKey = true;
+                    keyCarrier = 2;
                 }
-            });
-
-            // Door Logic
-            const doorData = STAGES[currentStageIdx].door;
-            if (activeSwitches >= switchMeshes.length && switchMeshes.length > 0) {
-                if (doorMesh.position.y < 4.5) doorMesh.position.y += 0.08;
             } else {
-                if (doorMesh.position.y > doorData.y) doorMesh.position.y -= 0.08;
-            }
+                // Key follows carrier
+                if (keyCarrier === 1) keyMesh.position.set(p1Mesh.position.x, p1Mesh.position.y + 0.8, 0);
+                else keyMesh.position.set(p2Mesh.position.x, p2Mesh.position.y + 0.8, 0);
 
-            // Door Collision
-            if (doorMesh.position.y < 2.5) {
-                if (Math.abs(p1Mesh.position.x - doorData.x) < 0.5 && p1Mesh.position.y < doorData.h) {
-                    if (p1Mesh.position.x < doorData.x) p1Mesh.position.x = doorData.x - 0.5;
-                    else p1Mesh.position.x = doorData.x + 0.5;
+                // Unlock Key Hole Check
+                if (keyMesh.position.distanceTo(lockMesh.position) < 1.2) {
+                    isDoorUnlocked = true;
+                    scene.remove(keyMesh); // Consume Key
                 }
             }
 
-            // Goal Clearance Check
-            const d1 = p1Mesh.position.distanceTo(goalMesh.position);
-            const d2 = p2Mesh.position.distanceTo(goalMesh.position);
-
-            if (d1 < 1.2 && d2 < 1.2) {
-                if (currentStageIdx < STAGES.length - 1) {
-                    currentStageIdx++;
-                    buildStage(currentStageIdx);
-                    alert(`🎉 STAGE ${currentStageIdx} 클리어! 다음 스테이지로 이동합니다.`);
-                } else {
-                    alert("🏆 축하합니다! 모든 스테이지를 클리어했습니다!");
+            // Door Opening Logic
+            if (isDoorUnlocked) {
+                if (doorMesh.position.y < 5.5) doorMesh.position.y += 0.08; // Gate Lift
+            } else {
+                // Door Collision Barrier
+                if (Math.abs(p1Mesh.position.x - doorMesh.position.x) < 0.6 && p1Mesh.position.y < 4) {
+                    p1Mesh.position.x = doorMesh.position.x - 0.6;
                 }
             }
 
-            // Send Realtime Network Sync
+            // Goal Clear Check
+            if (p1Mesh.position.distanceTo(goalMesh.position) < 1.2 && p2Mesh.position.distanceTo(goalMesh.position) < 1.2) {
+                alert("🎉 STAGE 1-1 Key Carrier 클리어!");
+                p1Mesh.position.set(-11, 0.45, 0);
+                p2Mesh.position.set(-9.5, 0.45, 0);
+                hasKey = false;
+                isDoorUnlocked = false;
+                doorMesh.position.set(9, 2.5, 0);
+                scene.add(keyMesh);
+                keyMesh.position.set(-8, 2.5, 0);
+            }
+
+            // Sync Multi
             if ((moved || vy !== 0) && conn && conn.open) {
                 conn.send({
                     x: p1Mesh.position.x,
                     y: p1Mesh.position.y,
-                    stage: currentStageIdx
+                    hasKey: hasKey,
+                    isUnlocked: isDoorUnlocked
                 });
             }
 
