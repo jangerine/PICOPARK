@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pico Park - Multi Stage Game</title>
+    <title>3D Pico Park - Room Code Multi Game</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { overflow: hidden; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0c10; color: #fff; user-select: none; }
@@ -16,21 +16,28 @@
             border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px;
             padding: 16px; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
-        #ui-panel h2 { font-size: 18px; margin-bottom: 10px; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
-        .info-row { font-size: 13px; margin-bottom: 8px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
-        .info-row span.val { color: #f1f5f9; font-weight: 600; font-family: monospace; font-size: 14px; }
+        #ui-panel h2 { font-size: 18px; margin-bottom: 12px; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+        
+        .room-box {
+            background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; text-align: center;
+        }
+        .room-code {
+            font-size: 24px; font-weight: bold; color: #38bdf8; letter-spacing: 4px; font-family: monospace; margin: 4px 0;
+        }
         
         input[type="text"] {
-            width: 100%; padding: 8px 12px; margin: 8px 0; border-radius: 6px;
-            border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 13px; outline: none;
+            width: 100%; padding: 10px; margin: 6px 0; border-radius: 6px;
+            border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 14px; outline: none; text-align: center; letter-spacing: 2px;
         }
         input[type="text"]:focus { border-color: #38bdf8; }
         
         button {
-            width: 100%; padding: 10px; border-radius: 6px; border: none;
+            width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: none;
             background: #0284c7; color: white; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;
         }
         button:hover { background: #0369a1; }
+        button.host-btn { background: #10b981; }
+        button.host-btn:hover { background: #059669; }
         
         #status-text { font-size: 12px; margin-top: 8px; color: #fbbf24; text-align: center; }
         
@@ -76,23 +83,33 @@
     <div id="canvas-container"></div>
 
     <div id="ui-panel">
-        <h2>🎮 3D Pico Park Multi</h2>
-        <div class="info-row">
-            <span>내 접속 ID:</span>
-            <span id="my-id" class="val">생성 중...</span>
+        <h2>🎮 3D Pico Park</h2>
+        
+        <!-- 방 만들기 섹션 -->
+        <div class="room-box">
+            <button class="host-btn" onclick="createRoom()">🏠 방 만들기 (4자리 코드)</button>
+            <div id="host-code-display" style="display:none; margin-top:8px;">
+                <span style="font-size:12px; color:#94a3b8;">생성된 방 코드</span>
+                <div id="room-code-num" class="room-code">----</div>
+            </div>
         </div>
-        <input type="text" id="other-id" placeholder="친구 ID 입력">
-        <button onclick="connectToPeer()">친구 방 접속하기</button>
-        <div id="status-text">상태: 서버 연결 대기 중</div>
+
+        <!-- 방 입장 섹션 -->
+        <div style="margin-top: 10px;">
+            <input type="text" id="join-code" placeholder="4자리 방 코드 입력" maxlength="4">
+            <button onclick="joinRoom()">입장하기</button>
+        </div>
+
+        <div id="status-text">상태: 대기 중</div>
     </div>
 
     <div id="stage-badge">STAGE <span id="stage-num">1</span> / 3</div>
 
     <div id="controls-guide">
         💡 <b>플레이 방법:</b><br>
-        - WASD / 방향키 / 터치버튼으로 이동<br>
-        - 노란 스위치 2개를 두 명에서 동시에 밟으면 문이 열립니다.<br>
-        - 두 플레이어가 모두 파란 구체(골인)에 닿아야 다음 맵으로 넘어갑니다!
+        - 한 명은 [방 만들기], 다른 한 명은 4자리 코드로 [입장하기]<br>
+        - 노란 스위치 2개를 동시에 밟으면 문이 열립니다.<br>
+        - 두 플레이어가 모두 파란 구체(골인)에 닿으면 클리어!
     </div>
 
     <div id="touch-controls">
@@ -179,7 +196,6 @@
             const data = STAGES[idx];
             document.getElementById('stage-num').innerText = idx + 1;
 
-            // Clear old objects
             if (floorMesh) scene.remove(floorMesh);
             if (doorMesh) scene.remove(doorMesh);
             if (goalMesh) scene.remove(goalMesh);
@@ -232,7 +248,6 @@
         window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
         window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-        // Touch Control bindings
         const touchState = { up: false, down: false, left: false, right: false };
         const bindTouch = (id, key) => {
             const btn = document.getElementById(id);
@@ -246,36 +261,67 @@
         bindTouch('btn-left', 'left');
         bindTouch('btn-right', 'right');
 
-        // --- 5. PeerJS Networking ---
-        const peer = new Peer();
+        // --- 5. Simplified Room-Code PeerJS Logic ---
+        let peer = null;
         let conn = null;
+        const PREFIX = "pico-park-room-";
 
-        peer.on('open', id => {
-            document.getElementById('my-id').innerText = id;
-        });
+        // 방 만들기 (4자리 숫자 ID 생성)
+        function createRoom() {
+            const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+            const fullId = PREFIX + roomCode;
 
-        peer.on('connection', connection => {
-            conn = connection;
-            initConnection();
-        });
+            if (peer) peer.destroy();
+            peer = new Peer(fullId);
 
-        function connectToPeer() {
-            const otherId = document.getElementById('other-id').value.trim();
-            if(!otherId) return alert("상대방 ID를 입력하세요.");
-            conn = peer.connect(otherId);
-            initConnection();
+            peer.on('open', id => {
+                document.getElementById('host-code-display').style.display = 'block';
+                document.getElementById('room-code-num').innerText = roomCode;
+                setStatus(`방 생성 완료! 코드: ${roomCode} (친구를 기다리는 중...)`, "#fbbf24");
+            });
+
+            peer.on('connection', connection => {
+                conn = connection;
+                initConnection();
+            });
+
+            peer.on('error', err => {
+                if(err.type === 'unavailable-id') {
+                    createRoom(); // 중복 시 재시도
+                } else {
+                    setStatus("방 생성 중 오류 발생", "#ef4444");
+                }
+            });
+        }
+
+        // 방 입장하기
+        function joinRoom() {
+            const code = document.getElementById('join-code').value.trim();
+            if (code.length !== 4) return alert("4자리 방 코드를 정확히 입력하세요.");
+
+            const targetId = PREFIX + code;
+            if (peer) peer.destroy();
+            peer = new Peer();
+
+            peer.on('open', () => {
+                setStatus("방 접속 시도 중...", "#fbbf24");
+                conn = peer.connect(targetId);
+                initConnection();
+            });
+
+            peer.on('error', err => {
+                setStatus("방을 찾을 수 없거나 접속할 수 없습니다.", "#ef4444");
+            });
         }
 
         function initConnection() {
-            const statusEl = document.getElementById('status-text');
-            statusEl.innerText = "상태: 멀티플레이 연결 성공! 🟢";
-            statusEl.style.color = "#10b981";
+            conn.on('open', () => {
+                setStatus("연결 성공! 게임을 시작하세요 🟢", "#10b981");
+            });
 
             conn.on('data', data => {
-                // Update friend's position
                 p2Mesh.position.set(data.x, data.y, data.z);
 
-                // Stage Sync
                 if (data.stage !== undefined && data.stage !== currentStageIdx) {
                     currentStageIdx = data.stage;
                     buildStage(currentStageIdx);
@@ -283,11 +329,16 @@
             });
         }
 
-        // --- 6. Main Loop & Game Logic ---
+        function setStatus(msg, color) {
+            const el = document.getElementById('status-text');
+            el.innerText = msg;
+            el.style.color = color;
+        }
+
+        // --- 6. Main Loop ---
         function animate() {
             requestAnimationFrame(animate);
 
-            // Movement
             const speed = 0.12;
             let moved = false;
 
@@ -296,21 +347,21 @@
             if (keys['a'] || keys['arrowleft'] || touchState.left) { p1Mesh.position.x -= speed; moved = true; }
             if (keys['d'] || keys['arrowright'] || touchState.right) { p1Mesh.position.x += speed; moved = true; }
 
-            // Switch Check
+            // Switches
             let activeSwitches = 0;
             switchMeshes.forEach(sw => {
                 const dist1 = p1Mesh.position.distanceTo(sw.position);
                 const dist2 = p2Mesh.position.distanceTo(sw.position);
 
                 if (dist1 < 0.9 || dist2 < 0.9) {
-                    sw.material.color.setHex(0x10b981); // Active Green
+                    sw.material.color.setHex(0x10b981);
                     activeSwitches++;
                 } else {
-                    sw.material.color.setHex(0xf59e0b); // Inactive Yellow
+                    sw.material.color.setHex(0xf59e0b);
                 }
             });
 
-            // Door Logic
+            // Door
             const doorData = STAGES[currentStageIdx].door;
             if (activeSwitches >= switchMeshes.length && switchMeshes.length > 0) {
                 if (doorMesh.position.y < 4.5) doorMesh.position.y += 0.08;
@@ -322,11 +373,11 @@
             if (doorMesh.position.y < 2.5) {
                 if (Math.abs(p1Mesh.position.z - doorData.z) < 0.5 &&
                     Math.abs(p1Mesh.position.x - doorData.x) < doorData.w / 2) {
-                    p1Mesh.position.z += 0.15; // Push back
+                    p1Mesh.position.z += 0.15;
                 }
             }
 
-            // Goal Logic (Both must reach goal)
+            // Goal
             const d1 = p1Mesh.position.distanceTo(goalMesh.position);
             const d2 = p2Mesh.position.distanceTo(goalMesh.position);
 
@@ -334,13 +385,13 @@
                 if (currentStageIdx < STAGES.length - 1) {
                     currentStageIdx++;
                     buildStage(currentStageIdx);
-                    alert(`🎉 STAGE ${currentStageIdx} 클리어! 다음 맵으로 이동합니다.`);
+                    alert(`🎉 STAGE ${currentStageIdx} 클리어! 다음 스테이지로 이동합니다.`);
                 } else {
                     alert("🏆 축하합니다! 모든 스테이지를 클리어했습니다!");
                 }
             }
 
-            // Network Send
+            // Send Sync Data
             if (moved && conn && conn.open) {
                 conn.send({
                     x: p1Mesh.position.x,
@@ -355,7 +406,6 @@
 
         animate();
 
-        // Responsive Resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
